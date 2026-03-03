@@ -1,7 +1,7 @@
 class Ely < Formula
   desc "Elysium CLI - The API App Store"
   homepage "https://github.com/Lo10Th/Elysium"
-  version "0.1.1"
+  version "0.2.0"
   license "MIT"
 
   on_macos do

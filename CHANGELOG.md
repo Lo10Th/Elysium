@@ -5,6 +5,42 @@ All notable changes to Elysium will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-03
+
+### Added
+- **Testing Infrastructure** - 146 tests added, 50% Go coverage
+  - Config package tests (78.8%)
+  - Emblem package tests (92.6%)
+  - Validator package tests (100%)
+  - API package tests (73.5%)
+  - Scaffold package tests (83.7%)
+- **Shell Completion** - `ely completion [bash|zsh|fish|powershell]`
+  - Dynamic completion for emblem names
+  - Dynamic completion for action names
+  - Dynamic completion for action parameters
+- **Homebrew Distribution** - `brew tap Lo10Th/tap && brew install ely`
+  - Multi-platform support (darwin-amd64, darwin-arm64, linux-amd64, linux-arm64)
+  - Automatic SHA256 checksums via release workflow
+- **Install Script** - One-line installation
+  - `curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash`
+  - OS/architecture auto-detection
+  - Version selection (`--version v0.1.0`)
+  - Shell completion setup
+- **Uninstall Script** - Clean uninstall with `--purge` option
+- **CI Status Badges** - Test and Release workflow badges in README
+
+### Changed
+- CI coverage threshold enforced (Go: 40%, Python: 80%)
+- Tests now block PRs on failure (removed `continue-on-error`)
+
+### Installation Methods
+1. Homebrew: `brew tap Lo10Th/tap && brew install ely`
+2. One-line: `curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash`
+3. Go install: `go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest`
+4. Manual download from GitHub Releases
+
+---
+
 ## [0.1.1] - 2026-03-03
 
 ### Added
@@ -61,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Lo10Th/Elysium/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Lo10Th/Elysium/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Lo10Th/Elysium/releases/tag/v0.1.0

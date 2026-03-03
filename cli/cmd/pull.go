@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/elysium/elysium/cli/internal/api"
 	"github.com/elysium/elysium/cli/internal/config"
 	"github.com/elysium/elysium/cli/internal/emblem"
+	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +44,18 @@ Examples:
 
 		emblemInfo, err := client.GetEmblem(name)
 		if err != nil {
-			return fmt.Errorf("failed to get emblem: %w", err)
+			if strings.Contains(err.Error(), "not found") {
+				return errfmt.EmblemNotFoundError(name)
+			}
+			if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+				return errfmt.ConnectionError(cfg.Registry, err)
+			}
+			if strings.Contains(err.Error(), "timeout") {
+				return errfmt.NewDetailedError(err).
+					WithReason("Request timed out").
+					WithSuggestion("Try again or check your network connection")
+			}
+			return errfmt.NetworkError(err)
 		}
 
 		if version == "latest" {
@@ -51,7 +64,14 @@ Examples:
 
 		ver, err := client.GetEmblemVersion(name, version)
 		if err != nil {
-			return fmt.Errorf("failed to get emblem version: %w", err)
+			if strings.Contains(err.Error(), "not found") {
+				return errfmt.NewDetailedError(fmt.Errorf("version '%s' not found for emblem '%s'", version, name)).
+					WithSuggestion(fmt.Sprintf("Try: ely pull %s (to get latest version)", name))
+			}
+			if strings.Contains(err.Error(), "connection refused") {
+				return errfmt.ConnectionError(cfg.Registry, err)
+			}
+			return errfmt.NetworkError(err)
 		}
 
 		if err := emblem.SaveToCache(name, version, []byte(ver.YAMLContent)); err != nil {

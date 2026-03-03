@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/elysium/elysium/cli/internal/emblem"
+	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/elysium/elysium/cli/internal/executor"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -87,7 +88,12 @@ func executeEmblemAction(emblemName string, args []string) error {
 	cachePath := filepath.Join(home, ".elysium", "cache", fmt.Sprintf("%s@%s", emblemName, installedVersion), "emblem.yaml")
 	def, err := emblem.Load(cachePath)
 	if err != nil {
-		return fmt.Errorf("failed to load emblem: %w", err)
+		if strings.Contains(err.Error(), "YAML") || strings.Contains(err.Error(), "yaml") {
+			return errfmt.InvalidYAMLError(cachePath, err)
+		}
+		return errfmt.NewDetailedError(err).
+			WithContext("Emblem", emblemName).
+			WithContext("Cache path", cachePath)
 	}
 
 	if actionName == "" {
@@ -121,7 +127,29 @@ func executeEmblemAction(emblemName string, args []string) error {
 	exec := executor.New(def)
 	result, err := exec.Execute(actionName, params, outputFormat)
 	if err != nil {
-		return fmt.Errorf("execution failed: %w", err)
+		if strings.Contains(err.Error(), "connection refused") {
+			return errfmt.ConnectionError(def.BaseURL, err)
+		}
+		if strings.Contains(err.Error(), "timeout") {
+			return errfmt.NewDetailedError(err).
+				WithReason("Request timed out").
+				WithContext("Timeout", "30s").
+				WithContext("Emblem", emblemName).
+				WithContext("Action", actionName).
+				WithSuggestion("The API is taking too long to respond. Try again or check API status.")
+		}
+		if strings.Contains(err.Error(), "api key") || strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "401") {
+			if def.Auth.KeyEnv != "" {
+				return errfmt.AuthRequiredError(def.Auth.KeyEnv)
+			}
+			return errfmt.AuthRequiredError("API_KEY")
+		}
+		if strings.Contains(err.Error(), "rate limit") || strings.Contains(err.Error(), "429") {
+			return errfmt.RateLimitError(60)
+		}
+		return errfmt.NewDetailedError(err).
+			WithContext("Emblem", emblemName).
+			WithContext("Action", actionName)
 	}
 
 	fmt.Println(string(result))

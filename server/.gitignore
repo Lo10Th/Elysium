@@ -10,3 +10,5 @@ env/
 *.egg-info/
 dist/
 build/
+coverage.xml
+.coverage

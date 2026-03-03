@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elysium/elysium/cli/internal/config"
+	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -106,13 +108,21 @@ func (c *Client) ListEmblems(category string, limit, offset int) ([]Emblem, erro
 
 	resp, err := req.Get(c.baseURL + "/api/emblems")
 	if err != nil {
-		return nil, fmt.Errorf("failed to list emblems: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		if strings.Contains(err.Error(), "timeout") {
+			return nil, errfmt.NewDetailedError(err).
+				WithReason("Request timed out").
+				WithSuggestion("Try again or check your network connection")
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var emblems []Emblem
@@ -140,13 +150,16 @@ func (c *Client) SearchEmblems(query, category, sort string, limit, offset int) 
 
 	resp, err := req.Get(c.baseURL + "/api/emblems/search")
 	if err != nil {
-		return nil, fmt.Errorf("failed to search emblems: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var emblems []Emblem
@@ -160,13 +173,19 @@ func (c *Client) SearchEmblems(query, category, sort string, limit, offset int) 
 func (c *Client) GetEmblem(name string) (*Emblem, error) {
 	resp, err := c.client.R().Get(c.baseURL + "/api/emblems/" + name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get emblem: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 404 {
+			return nil, errfmt.EmblemNotFoundError(name)
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var emblem Emblem
@@ -180,13 +199,20 @@ func (c *Client) GetEmblem(name string) (*Emblem, error) {
 func (c *Client) GetEmblemVersion(name, version string) (*EmblemVersion, error) {
 	resp, err := c.client.R().Get(fmt.Sprintf("%s/api/emblems/%s/%s", c.baseURL, name, version))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get emblem version: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 404 {
+			return nil, errfmt.NewDetailedError(fmt.Errorf("version '%s' not found for emblem '%s'", version, name)).
+				WithSuggestion(fmt.Sprintf("Try: ely pull %s (to get latest version)", name))
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var ver EmblemVersion
@@ -211,13 +237,16 @@ func (c *Client) PublishEmblem(name, description, yamlContent, version string, c
 		SetBody(body).
 		Post(c.baseURL + "/api/emblems")
 	if err != nil {
-		return nil, fmt.Errorf("failed to publish emblem: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var emblem Emblem
@@ -231,13 +260,19 @@ func (c *Client) PublishEmblem(name, description, yamlContent, version string, c
 func (c *Client) ListKeys() ([]Key, error) {
 	resp, err := c.client.R().Get(c.baseURL + "/api/keys")
 	if err != nil {
-		return nil, fmt.Errorf("failed to list keys: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 401 {
+			return nil, errfmt.AuthRequiredError("API_KEY")
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var keys []Key
@@ -264,13 +299,19 @@ func (c *Client) CreateKey(name string, expiresAt *time.Time) (*Key, error) {
 		SetBody(body).
 		Post(c.baseURL + "/api/keys")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 401 {
+			return nil, errfmt.AuthRequiredError("API_KEY")
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var key Key
@@ -284,13 +325,19 @@ func (c *Client) CreateKey(name string, expiresAt *time.Time) (*Key, error) {
 func (c *Client) GetKey(id string) (*Key, error) {
 	resp, err := c.client.R().Get(c.baseURL + "/api/keys/" + id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get key: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(c.baseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 401 {
+			return nil, errfmt.AuthRequiredError("API_KEY")
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	var key Key
@@ -304,13 +351,19 @@ func (c *Client) GetKey(id string) (*Key, error) {
 func (c *Client) DeleteKey(id string) error {
 	resp, err := c.client.R().Delete(c.baseURL + "/api/keys/" + id)
 	if err != nil {
-		return fmt.Errorf("failed to delete key: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return errfmt.ConnectionError(c.baseURL, err)
+		}
+		return errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp ErrorResponse
 		json.Unmarshal(resp.Body(), &errResp)
-		return fmt.Errorf("API error: %s", errResp.Error)
+		if resp.StatusCode() == 401 {
+			return errfmt.AuthRequiredError("API_KEY")
+		}
+		return errfmt.APIError(resp.StatusCode(), errResp.Error)
 	}
 
 	return nil

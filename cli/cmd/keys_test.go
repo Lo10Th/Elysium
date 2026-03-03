@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -214,8 +215,8 @@ func TestUnauthorizedError(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		if err.Error() != "API error: Unauthorized" {
-			t.Errorf("Expected 'API error: Unauthorized', got '%s'", err.Error())
+		if !strings.Contains(err.Error(), "authentication required") {
+			t.Errorf("Expected error to contain 'authentication required', got '%s'", err.Error())
 		}
 	})
 }
@@ -237,8 +238,8 @@ func TestNotFoundError(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		if err.Error() != "API error: Key not found" {
-			t.Errorf("Expected 'API error: Key not found', got '%s'", err.Error())
+		if !strings.Contains(err.Error(), "Key not found") {
+			t.Errorf("Expected error to contain 'Key not found', got '%s'", err.Error())
 		}
 	})
 }

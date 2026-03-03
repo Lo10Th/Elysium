@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/elysium/elysium/cli/internal/emblem"
+	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -72,13 +73,30 @@ func (e *Executor) Execute(actionName string, params map[string]interface{}, for
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		if strings.Contains(err.Error(), "timeout") {
+			return nil, errfmt.NewDetailedError(err).
+				WithReason("Request timed out").
+				WithContext("Timeout", "30s").
+				WithSuggestion("The API is taking too long to respond. Try again or check API status.")
+		}
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return nil, errfmt.ConnectionError(e.definition.BaseURL, err)
+		}
+		return nil, errfmt.NetworkError(err)
 	}
 
 	if resp.IsError() {
 		var errResp map[string]interface{}
 		json.Unmarshal(resp.Body(), &errResp)
-		return nil, fmt.Errorf("API error [%d]: %v", resp.StatusCode(), errResp)
+		errMsg := ""
+		if msg, ok := errResp["error"].(string); ok {
+			errMsg = msg
+		} else if msg, ok := errResp["message"].(string); ok {
+			errMsg = msg
+		} else {
+			errMsg = resp.Status()
+		}
+		return nil, errfmt.APIError(resp.StatusCode(), errMsg)
 	}
 
 	return e.formatOutput(resp.Body(), format)

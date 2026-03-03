@@ -8,9 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/elysium/elysium/cli/internal/config"
+	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -107,7 +109,16 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return nil
 
 	case err := <-errChan:
-		return fmt.Errorf("server error: %w", err)
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+			return errfmt.ConnectionError(registry, err)
+		}
+		if strings.Contains(err.Error(), "timeout") {
+			return errfmt.NewDetailedError(err).
+				WithReason("Authentication timed out").
+				WithContext("Timeout", "5 minutes").
+				WithSuggestion("Try again or check your network connection")
+		}
+		return errfmt.NetworkError(err)
 
 	case <-timeout.C:
 		return fmt.Errorf("authentication timed out after 5 minutes")

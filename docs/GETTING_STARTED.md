@@ -14,47 +14,34 @@ Elysium is a registry and CLI tool for discovering and using APIs. Think of it a
 
 ## Installation
 
-### Using the install script (recommended)
-
-```bash
-curl -sSL https://get.elysium.dev | bash
-```
-
-### Using Homebrew (macOS/Linux)
-
-```bash
-brew tap elysium/tap
-brew install ely
-```
-
 ### From source (Go install)
 
 ```bash
-go install github.com/elysium/ely/cmd/ely@latest
+go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest
 ```
 
 ### Download binary directly
 
-Download the latest release from [GitHub Releases](https://github.com/elysium/elysium/releases):
+Download the latest release from [GitHub Releases](https://github.com/Lo10Th/Elysium/releases):
 
 ```bash
 # Linux
-curl -L -o ely https://github.com/elysium/elysium/releases/latest/download/ely-linux-amd64
+curl -L -o ely https://github.com/Lo10Th/Elysium/releases/latest/download/ely-linux-amd64
 chmod +x ely
 sudo mv ely /usr/local/bin/
 
 # macOS
-curl -L -o ely https://github.com/elysium/elysium/releases/latest/download/ely-darwin-arm64
+curl -L -o ely https://github.com/Lo10Th/Elysium/releases/latest/download/ely-darwin-arm64
 chmod +x ely
 sudo mv ely /usr/local/bin/
 
 # Windows (run in PowerShell as Administrator)
-# Download from https://github.com/elysium/elysium/releases/latest
+# Download from https://github.com/Lo10Th/Elysium/releases/latest
 ```
 
 ## Quick Start
 
-### 1. Install
+### 1. Verify Installation
 
 ```bash
 ely --version
@@ -66,7 +53,7 @@ ely --version
 ely login
 ```
 
-This will open your browser to authenticate with the Elysium registry. Once authenticated, your credentials are stored securely in `~/.elysium/`.
+This will open your browser to authenticate with the Elysium registry. Once authenticated, your credentials are stored securely in the system keyring.
 
 ### 3. Pull an emblem
 
@@ -83,6 +70,8 @@ If the emblem requires API keys, set the environment variable:
 ```bash
 export CLOTHING_SHOP_API_KEY=your-api-key-here
 ```
+
+> ⚠️ **Security Note**: Never commit API keys to version control. Use environment variables or a secrets manager.
 
 The emblem definition specifies which environment variable to use via the `auth.keyEnv` field.
 
@@ -117,6 +106,76 @@ ely clothing-shop create-product \
   --color blue
 ```
 
+## Available Commands
+
+### Authentication
+
+```bash
+ely login        # Browser-based OAuth login
+ely logout       # Remove stored credentials
+ely whoami       # Show current user info
+```
+
+### Discovery
+
+```bash
+ely search <query>           # Search emblems in registry
+ely info <name>              # View emblem details
+ely info <name>@<version>    # View specific version
+ely list                      # List installed emblems
+```
+
+### Installation
+
+```bash
+ely pull <name>              # Pull latest version
+ely pull <name>@<version>    # Pull specific version
+```
+
+### Development
+
+```bash
+ely init <name>              # Create new emblem scaffold
+ely validate ./emblem.yaml   # Validate emblem YAML
+ely test ./<dir>/            # Test emblem locally
+```
+
+### API Keys
+
+```bash
+ely keys list               # List your API keys
+ely keys create <name>      # Create new API key
+ely keys create <name> --expires 30  # Key expires in 30 days
+ely keys delete <id>        # Delete an API key
+ely keys show <id>          # Show key details
+```
+
+### Execution
+
+```bash
+ely <emblem-name> <action> [flags]
+
+# Examples:
+ely clothing-shop list-products
+ely clothing-shop get-product --id 1
+```
+
+## Configuration
+
+Elysium stores configuration in `~/.elysium/config.yaml`:
+
+```yaml
+registry: https://ely.karlharrenga.com
+token: eyJhbGciOiJIUzI1NiIs...
+cache_dir: ~/.elysium/cache
+installed:
+  clothing-shop: 1.0.0
+```
+
+### Environment Variables
+
+- `ELYSIUM_REGISTRY` - Override registry URL (default: https://ely.karlharrenga.com)
+
 ## Example Workflows
 
 ### Search for emblems
@@ -138,7 +197,6 @@ ely info clothing-shop@1.0.0
 
 ```bash
 ely pull clothing-shop@1.2.0
-ely pull clothing-shop@^1.0.0
 ```
 
 ### View installed emblems
@@ -147,19 +205,7 @@ ely pull clothing-shop@^1.0.0
 ely list
 ```
 
-### Update to latest version
-
-```bash
-ely update clothing-shop
-```
-
-### Remove an emblem
-
-```bash
-ely remove clothing-shop
-```
-
-## Publishing Your Own Emblem
+## Creating Your Own Emblem
 
 ### 1. Initialize a new emblem
 
@@ -180,100 +226,19 @@ Edit `emblem.yaml` with your API details (see [EMBLEM_SPEC.md](./EMBLEM_SPEC.md)
 ely validate ./emblem.yaml
 ```
 
-### 4. Publish
+### 4. Test locally
 
 ```bash
-ely publish ./my-api/
+ely test ./
 ```
 
-## Configuration
-
-Elysium stores configuration in `~/.elysium/config.json`:
-
-```json
-{
-  "registry": "https://ely.karlharrenga.com",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "cache_dir": "/home/user/.elysium/cache",
-  "installed": {
-    "clothing-shop": "1.0.0",
-    "stripe": "2.1.3"
-  }
-}
-```
-
-### Environment Variables
-
-- `ELYSIUM_REGISTRY` - Override registry URL
-- `ELYSIUM_CACHE_DIR` - Override cache directory
-- `NO_COLOR` - Disable colored output
-- `ELYSIUM_DEBUG` - Enable debug logging
-
-## Advanced Usage
-
-### Run without installing
-
-You can run emblems directly from the registry without installing:
+### 5. Publish (Planned Feature)
 
 ```bash
-ely --no-install clothing-shop list-products
+# Coming soon: ely publish ./my-api/
 ```
 
-### Use with CI/CD
-
-```bash
-# In CI pipeline
-ely pull clothing-shop@1.0.0
-ely clothing-shop create-order \
-  --customer-name "CI Test" \
-  --customer-email "ci@test.com" \
-  --customer-address "Test Address" \
-  --items '[{"product_id": 1, "quantity": 1}]'
-```
-
-### JSON output for scripting
-
-```bash
-ely clothing-shop list-products --output json | jq '.[0].name'
-```
-
-### Quiet mode
-
-```bash
-ely clothing-shop list-products --quiet
-```
-
-### Verbose mode
-
-```bash
-ely clothing-shop list-products --verbose
-```
-
-## Shell Completion
-
-Enable shell completion for bash, zsh, or fish:
-
-### Bash
-
-```bash
-source <(ely completion bash)
-# Add to ~/.bashrc
-echo 'source <(ely completion bash)' >> ~/.bashrc
-```
-
-### Zsh
-
-```bash
-source <(ely completion zsh)
-# Add to ~/.zshrc
-echo 'source <(ely completion zsh)' >> ~/.zshrc
-```
-
-### Fish
-
-```bash
-ely completion fish > ~/.config/fish/completions/ely.fish
-```
+> **Note**: The `ely publish` command is not yet implemented. For now, emblems can be added to the registry by submitting them via the API or creating a pull request.
 
 ## Troubleshooting
 
@@ -299,12 +264,6 @@ Run login:
 ely login
 ```
 
-Or set token manually:
-
-```bash
-export ELYSIUM_TOKEN=your-token
-```
-
 ### "Emblem not found" error
 
 Check the emblem name:
@@ -327,15 +286,16 @@ Validate your emblem:
 ely validate ./emblem.yaml
 ```
 
-### Clear cache
+### Connection errors
 
-```bash
-ely cache clean
-```
+If you're having trouble connecting to the registry:
+
+1. Check your internet connection
+2. Verify the registry URL: `ely config get registry`
+3. Try with verbose output: `ely search <query> --verbose`
 
 ## Next Steps
 
 - Read the [Emblem Specification](./EMBLEM_SPEC.md) to create your own emblems
 - Check out [example emblems](../examples/) for inspiration
-- Join the community on [Discord](https://discord.gg/elysium)
-- Report issues on [GitHub](https://github.com/elysium/elysium/issues)
+- Report issues on [GitHub](https://github.com/Lo10Th/Elysium/issues)

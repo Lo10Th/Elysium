@@ -43,8 +43,7 @@ Create `.env` files for local development:
 
 **CLI (.env in cli/ directory):**
 ```env
-ELYSIUM_API_URL=http://localhost:8000
-ELYSIUM_REGISTRY_URL=http://localhost:8000
+ELYSIUM_REGISTRY=http://localhost:8000
 ```
 
 **Server (.env in server/ directory):**

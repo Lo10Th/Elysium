@@ -1,9 +1,7 @@
 # Elysium - The API App Store
 
-[![Test Coverage](https://img.shields.io/badge/coverage-0%25-red.svg)](https://github.com/Lo10Th/Elysium)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Lo10Th/Elysium)](https://goreportcard.com/report/github.com/Lo10Th/Elysium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/release/Lo10Th/Elysium.svg)](https://github.com/Lo10Th/Elysium/releases)
 
 **Version**: 0.1.0  
 **Status**: In Development
@@ -32,15 +30,11 @@ APIs are everywhere, but using them requires:
 ### Installation
 
 ```bash
-# Using install script (recommended)
-curl -sSL https://get.elysium.dev | bash
+# Using Go install (recommended)
+go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest
 
-# Using Homebrew
-brew tap elysium/tap
-brew install ely
-
-# Using Go
-go install github.com/elysium/elysium/cli/cmd/ely@latest
+# Download binary from GitHub Releases
+# Visit: https://github.com/Lo10Th/Elysium/releases
 ```
 
 ### Pull and Use an Emblem
@@ -87,7 +81,7 @@ ely clothing-shop create-order \
 │                 │      │   (Supabase)     │      │   (You)         │
 │   - Pull        │      │                  │      │                 │
 │   - Execute     │      │   - Store        │      │   - Publish     │
-│   - Publish     │      │   - Search       │      │   - Version     │
+│   - Search      │      │   - Search       │      │   - Version     │
 │                 │      │   - Auth          │      │                 │
 └─────────────────┘      └──────────────────┘      └─────────────────┘
         │                         │                         
@@ -211,16 +205,9 @@ ely list                  # List installed emblems
 
 ```bash
 ely pull <name>[@version] # Pull emblem
-ely update <name>         # Update to latest
-ely remove <name>         # Uninstall emblem
-```
-
-### Publishing
-
-```bash
-ely init <name>           # Create new emblem
+ely init <name>           # Create new emblem scaffold
 ely validate ./emblem.yaml # Validate emblem
-ely publish ./<dir>/      # Publish to registry
+ely test ./<dir>/         # Test emblem locally
 ```
 
 ### Execution
@@ -232,6 +219,26 @@ ely <emblem-name> <action> [flags]
 ely clothing-shop list-products
 ely clothing-shop get-product --id 1
 ely stripe create-customer --email "test@example.com"
+```
+
+### API Keys
+
+```bash
+ely keys list              # List your API keys
+ely keys create <name>     # Create new API key
+ely keys delete <id>       # Delete API key
+ely keys show <id>         # Show key details
+```
+
+### Planned Commands (Not Yet Implemented)
+
+The following commands are planned for future releases:
+
+```bash
+ely update <name>         # Update emblem to latest version
+ely remove <name>         # Uninstall emblem
+ely publish ./<dir>/      # Publish emblem to registry
+ely completion bash       # Shell completion
 ```
 
 ## Server Endpoints
@@ -253,15 +260,15 @@ GET  /api/emblems                    # List all
 GET  /api/emblems?category=payments  # Filter
 GET  /api/emblems/:name              # Get emblem
 GET  /api/emblems/:name/:version     # Get version
-POST /api/emblems                    # Publish new
-PUT  /api/emblems/:name              # New version
-DELETE /api/emblems/:name           # Delete
+POST /api/emblems                    # Publish new (planned)
+PUT  /api/emblems/:name              # New version (planned)
+DELETE /api/emblems/:name           # Delete (planned)
 ```
 
 ### Search
 
 ```
-GET /api/search?q=query&sort=downloads&limit=20
+GET /api/emblems/search?q=query&sort=downloads&limit=20
 ```
 
 ## Setup Guide
@@ -350,9 +357,11 @@ git push origin v1.0.0
 ## Roadmap
 
 - [x] Emblem specification and schema
-- [x] Registry backend (Supabase)
+- [x] Registry backend (Supabase + FastAPI)
 - [x] Go CLI core commands
-- [x] Authentication (API keys)
+- [x] Authentication (OAuth + API keys)
+- [x] Dynamic emblem execution
+- [x] Local validation and testing
 - [ ] Web UI for browsing emblems
 - [ ] Emblem marketplace
 - [ ] Private namespaces
@@ -388,19 +397,10 @@ git push origin v1.0.0
 
 MIT License - see [LICENSE](LICENSE)
 
-## Acknowledgments
-
-- [Cobra](https://github.com/spf13/cobra) - CLI framework
-- [Bubbletea](https://github.com/charmbracelet/bubbletea) - TUI framework
-- [FastAPI](https://fastapi.tiangolo.com/) - API framework
-- [Supabase](https://supabase.com/) - Backend platform
-
 ## Support
 
 - 📚 Documentation: [docs/](docs/)
-- 💬 Discord: [discord.gg/elysium](https://discord.gg/elysium)
-- 🐛 Issues: [GitHub Issues](https://github.com/elysium/elysium/issues)
-- 📧 Email: support@elysium.dev
+- 🐛 Issues: [GitHub Issues](https://github.com/Lo10Th/Elysium/issues)
 
 ---
 

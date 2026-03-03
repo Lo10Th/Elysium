@@ -593,8 +593,8 @@ version: 1.0.0
 description: REST API for an online clothing store with product management and order processing
 author: Elysium Team
 license: MIT
-repository: https://github.com/elysium/clothing-shop
-homepage: https://docs.elysium.dev/clothing-shop
+repository: https://github.com/Lo10Th/Elysium/tree/main/examples/clothing-shop
+homepage: https://github.com/Lo10Th/Elysium/tree/main/examples/clothing-shop
 
 baseUrl: https://api.clothing-shop.example.com/v1
 

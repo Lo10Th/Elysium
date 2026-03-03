@@ -247,7 +247,7 @@ HOST=0.0.0.0
 PORT=8000
 
 # CORS
-CORS_ORIGINS=http://localhost:3000,https://elysium.dev
+CORS_ORIGINS=http://localhost:3000,https://ely.karlharrenga.com
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS=100

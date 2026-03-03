@@ -214,7 +214,7 @@ Error: API key required for this action
 
 ```bash
 # ~/.elysium/config.yaml
-registry: https://registry.elysium.dev
+registry: https://ely.karlharrenga.com
 output: table
 cache_dir: ~/.elysium/cache
 
@@ -403,9 +403,9 @@ jobs:
 # Formula/ely.rb
 class Ely < Formula
   desc "API App Store CLI"
-  homepage "https://elysium.dev"
+  homepage "https://github.com/Lo10Th/Elysium"
   version "1.0.0"
-  url "https://github.com/elysium/elysium/releases/download/v1.0.0/ely-darwin-amd64"
+  url "https://github.com/Lo10Th/Elysium/releases/download/v1.0.0/ely-darwin-amd64"
   sha256 "..."
   
   def install
@@ -438,7 +438,8 @@ ARCH=$(uname -m)
 VERSION="latest"
 
 # Download correct binary
-URL="https://get.elysium.dev/${OS}/${ARCH}/ely"
+VERSION="latest"
+URL="https://github.com/Lo10Th/Elysium/releases/download/${VERSION}/ely-${OS}-${ARCH}"
 curl -sSL $URL -o ely
 chmod +x ely
 sudo mv ely /usr/local/bin/

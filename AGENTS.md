@@ -400,6 +400,4 @@ with open('examples/clothing-shop/emblem.yaml') as f:
 
 ## Contact
 
-- GitHub Issues: https://github.com/elysium/elysium/issues
-- Discord: https://discord.gg/elysium
-- Email: support@elysium.dev
+- GitHub Issues: https://github.com/Lo10Th/Elysium/issues

@@ -34,24 +34,23 @@ class TestKeyRoutes:
 
     def test_create_key_success(self, client, mock_supabase, mock_auth_user):
         """Test creating a new API key."""
-        import secrets
-        
         # Mock auth
         mock_auth_response = MagicMock()
         mock_auth_response.user = mock_auth_user
         mock_supabase.auth.get_user.return_value = mock_auth_response
 
-        # Mock key creation
-        new_key = {
+        # Duplicate check returns empty, insert returns new key row
+        no_duplicate = MagicMock()
+        no_duplicate.data = []
+        key_row = {
             "id": "key-new",
             "name": "new-key",
-            "key": f"sk_test_{secrets.token_urlsafe(32)}",
             "user_id": "user-123",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": "2024-01-01T00:00:00Z",
         }
-        mock_response = MagicMock()
-        mock_response.data = new_key
-        mock_supabase.table.return_value.insert.return_value.execute.return_value = mock_response
+        create_response = MagicMock()
+        create_response.data = [key_row]
+        mock_supabase.table.return_value.execute.side_effect = [no_duplicate, create_response]
 
         response = client.post(
             "/api/keys",
@@ -71,19 +70,19 @@ class TestKeyRoutes:
         mock_auth_response.user = mock_auth_user
         mock_supabase.auth.get_user.return_value = mock_auth_response
 
-        # Mock key creation
-        expiration = (datetime.utcnow() + timedelta(days=30)).isoformat()
-        new_key = {
+        # Duplicate check returns empty, insert returns new key row with expiration
+        no_duplicate = MagicMock()
+        no_duplicate.data = []
+        key_row = {
             "id": "key-new",
             "name": "temp-key",
-            "key": "sk_test_xyz",
             "user_id": "user-123",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": expiration
+            "created_at": "2024-01-01T00:00:00Z",
+            "expires_at": "2024-01-31T00:00:00Z",
         }
-        mock_response = MagicMock()
-        mock_response.data = new_key
-        mock_supabase.table.return_value.insert.return_value.execute.return_value = mock_response
+        create_response = MagicMock()
+        create_response.data = [key_row]
+        mock_supabase.table.return_value.execute.side_effect = [no_duplicate, create_response]
 
         response = client.post(
             "/api/keys",
@@ -181,25 +180,23 @@ class TestKeyRoutes:
 
     def test_key_shown_only_once_on_creation(self, client, mock_supabase, mock_auth_user):
         """Test that API key value is returned only on creation."""
-        import secrets
-        
         # Mock auth
         mock_auth_response = MagicMock()
         mock_auth_response.user = mock_auth_user
         mock_supabase.auth.get_user.return_value = mock_auth_response
 
-        # Mock key creation
-        raw_key = f"sk_test_{secrets.token_urlsafe(32)}"
-        new_key = {
+        # Duplicate check returns empty, insert returns new key
+        no_duplicate = MagicMock()
+        no_duplicate.data = []
+        key_row = {
             "id": "key-new",
             "name": "new-key",
-            "key": raw_key,  # Key shown on creation
             "user_id": "user-123",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": "2024-01-01T00:00:00Z",
         }
-        mock_response = MagicMock()
-        mock_response.data = new_key
-        mock_supabase.table.return_value.insert.return_value.execute.return_value = mock_response
+        create_response = MagicMock()
+        create_response.data = [key_row]
+        mock_supabase.table.return_value.execute.side_effect = [no_duplicate, create_response]
 
         response = client.post(
             "/api/keys",
@@ -209,26 +206,23 @@ class TestKeyRoutes:
 
         assert response.status_code in [200, 201]
         data = response.json()
-        
-        # Key should be visible in creation response
-        assert data.get("key") == raw_key or "key" in data
+
+        # Key should be visible in creation response (raw key, not hash)
+        assert "key" in data
+        raw_key = data.get("key")
+        assert raw_key is not None and raw_key.startswith("ely_")
 
         # On subsequent GET requests, key should not be visible
-        mock_get_response = MagicMock()
-        # Key hashed in database
-        mock_get_response.data = {
-            "id": "key-new",
-            "name": "new-key",
-            "key": None,  # Should be None or hashed
-            "user_id": "user-123",
-            "created_at": datetime.utcnow().isoformat()
-        }
-        mock_supabase.table.return_value.select.return_value.execute.return_value = mock_get_response
+        list_response_data = [{"id": "key-new", "name": "new-key",
+                                "created_at": "2024-01-01T00:00:00Z", "expires_at": None}]
+        list_mock = MagicMock()
+        list_mock.data = list_response_data
+        mock_supabase.table.return_value.execute.side_effect = [list_mock]
 
         get_response = client.get(
             "/api/keys",
             headers={"Authorization": "Bearer test-token"}
         )
 
-        # Key should not be visible in list
-        # (Implementation may vary - key might be omitted or hashed)
+        # Key should not be visible in list (KeyListItem has no key field)
+        assert get_response.status_code == 200

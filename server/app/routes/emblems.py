@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Optional, List
 from app.database import get_supabase
+from app.limiter import limiter, PUBLIC_LIMIT, AUTH_LIMIT
 from app.models import (
     Emblem,
     EmblemCreate,
@@ -42,7 +43,9 @@ def validate_emblem_yaml(yaml_content: str) -> dict:
 
 
 @router.get("", response_model=List[Emblem])
+@limiter.limit(PUBLIC_LIMIT)
 async def list_emblems(
+    request: Request,
     category: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -88,7 +91,9 @@ async def list_emblems(
 
 
 @router.get("/search", response_model=List[Emblem])
+@limiter.limit(PUBLIC_LIMIT)
 async def search_emblems(
+    request: Request,
     q: str = Query(..., max_length=200),
     category: Optional[str] = Query(None, max_length=100),
     sort: str = Query("downloads"),
@@ -143,7 +148,8 @@ async def search_emblems(
 
 
 @router.get("/{name}", response_model=Emblem)
-async def get_emblem(name: str):
+@limiter.limit(PUBLIC_LIMIT)
+async def get_emblem(request: Request, name: str):
     try:
         supabase = get_supabase()
         response = (
@@ -183,7 +189,8 @@ async def get_emblem(name: str):
 
 
 @router.get("/{name}/{version}", response_model=dict)
-async def get_emblem_version(name: str, version: str):
+@limiter.limit(PUBLIC_LIMIT)
+async def get_emblem_version(request: Request, name: str, version: str):
     try:
         supabase = get_supabase()
         emblem_response = (
@@ -221,13 +228,14 @@ async def get_emblem_version(name: str, version: str):
 
 
 @router.post("", response_model=Emblem)
-async def create_emblem(request: EmblemCreate, user: User = Depends(get_current_user)):
-    validate_emblem_yaml(request.yaml_content)
+@limiter.limit(AUTH_LIMIT)
+async def create_emblem(request: Request, request_body: EmblemCreate, user: User = Depends(get_current_user)):
+    validate_emblem_yaml(request_body.yaml_content)
 
     try:
         supabase = get_supabase()
         existing = (
-            supabase.table("emblems").select("id").eq("name", request.name).execute()
+            supabase.table("emblems").select("id").eq("name", request_body.name).execute()
         )
 
         if existing.data:
@@ -239,15 +247,15 @@ async def create_emblem(request: EmblemCreate, user: User = Depends(get_current_
             supabase.table("emblems")
             .insert(
                 {
-                    "name": request.name,
-                    "description": request.description,
+                    "name": request_body.name,
+                    "description": request_body.description,
                     "author_id": user.id,
-                    "category": request.category,
-                    "tags": request.tags,
-                    "license": request.license,
-                    "repository_url": request.repository_url,
-                    "homepage_url": request.homepage_url,
-                    "latest_version": request.version,
+                    "category": request_body.category,
+                    "tags": request_body.tags,
+                    "license": request_body.license,
+                    "repository_url": request_body.repository_url,
+                    "homepage_url": request_body.homepage_url,
+                    "latest_version": request_body.version,
                 }
             )
             .execute()
@@ -261,28 +269,28 @@ async def create_emblem(request: EmblemCreate, user: User = Depends(get_current_
         supabase.table("emblem_versions").insert(
             {
                 "emblem_id": emblem_id,
-                "version": request.version,
-                "yaml_content": request.yaml_content,
+                "version": request_body.version,
+                "yaml_content": request_body.yaml_content,
                 "published_by": user.id,
             }
         ).execute()
 
         supabase.table("emblem_pulls").insert(
-            {"emblem_id": emblem_id, "version": request.version, "pulled_by": user.id}
+            {"emblem_id": emblem_id, "version": request_body.version, "pulled_by": user.id}
         ).execute()
 
         return Emblem(
             id=emblem_id,
-            name=request.name,
-            description=request.description,
+            name=request_body.name,
+            description=request_body.description,
             author_id=user.id,
             author_name=user.username,
-            category=request.category,
-            tags=request.tags,
-            license=request.license,
-            repository_url=request.repository_url,
-            homepage_url=request.homepage_url,
-            latest_version=request.version,
+            category=request_body.category,
+            tags=request_body.tags,
+            license=request_body.license,
+            repository_url=request_body.repository_url,
+            homepage_url=request_body.homepage_url,
+            latest_version=request_body.version,
             downloads_count=0,
             created_at=emblem_response.data[0]["created_at"],
             updated_at=emblem_response.data[0]["updated_at"],
@@ -294,10 +302,11 @@ async def create_emblem(request: EmblemCreate, user: User = Depends(get_current_
 
 
 @router.put("/{name}", response_model=Emblem)
+@limiter.limit(AUTH_LIMIT)
 async def update_emblem(
-    name: str, request: EmblemUpdate, user: User = Depends(get_current_user)
+    request: Request, name: str, request_body: EmblemUpdate, user: User = Depends(get_current_user)
 ):
-    validate_emblem_yaml(request.yaml_content)
+    validate_emblem_yaml(request_body.yaml_content)
 
     try:
         supabase = get_supabase()
@@ -319,7 +328,7 @@ async def update_emblem(
             supabase.table("emblem_versions")
             .select("id")
             .eq("emblem_id", emblem_id)
-            .eq("version", request.version)
+            .eq("version", request_body.version)
             .execute()
         )
 
@@ -329,25 +338,25 @@ async def update_emblem(
         supabase.table("emblem_versions").insert(
             {
                 "emblem_id": emblem_id,
-                "version": request.version,
-                "yaml_content": request.yaml_content,
-                "changelog": request.description,
+                "version": request_body.version,
+                "yaml_content": request_body.yaml_content,
+                "changelog": request_body.description,
                 "published_by": user.id,
             }
         ).execute()
 
         supabase.table("emblems").update(
             {
-                "description": request.description
+                "description": request_body.description
                 or emblem_response.data["description"],
-                "latest_version": request.version,
+                "latest_version": request_body.version,
             }
         ).eq("id", emblem_id).execute()
 
         return Emblem(
             id=emblem_id,
             name=name,
-            description=request.description or emblem_response.data["description"],
+            description=request_body.description or emblem_response.data["description"],
             author_id=user.id,
             author_name=user.username,
             category=emblem_response.data.get("category"),
@@ -355,7 +364,7 @@ async def update_emblem(
             license=emblem_response.data.get("license", "MIT"),
             repository_url=emblem_response.data.get("repository_url"),
             homepage_url=emblem_response.data.get("homepage_url"),
-            latest_version=request.version,
+            latest_version=request_body.version,
             downloads_count=emblem_response.data.get("downloads_count", 0),
             created_at=emblem_response.data["created_at"],
             updated_at=emblem_response.data["updated_at"],
@@ -367,7 +376,8 @@ async def update_emblem(
 
 
 @router.delete("/{name}")
-async def delete_emblem(name: str, user: User = Depends(get_current_user)):
+@limiter.limit(AUTH_LIMIT)
+async def delete_emblem(request: Request, name: str, user: User = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         emblem_response = (

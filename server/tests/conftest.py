@@ -13,6 +13,18 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 from app.main import app
 
 
+def make_chainable_query():
+    """Create a MagicMock query that returns itself for all chaining methods."""
+    query = MagicMock()
+    for method in (
+        'select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
+        'like', 'ilike', 'or_', 'order', 'range', 'single',
+        'limit', 'insert', 'update', 'delete', 'upsert',
+    ):
+        getattr(query, method).return_value = query
+    return query
+
+
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
@@ -21,21 +33,29 @@ def client():
 
 @pytest.fixture
 def mock_supabase():
-    """Mock Supabase client."""
-    with patch('app.database.supabase') as mock:
+    """Mock Supabase client with chainable query support."""
+    mock = MagicMock()
+
+    # Set up default auth mock with valid string attributes so auth checks pass
+    auth_user = MagicMock()
+    auth_user.id = "user-123"
+    auth_user.email = "test@example.com"
+    mock.auth.get_user.return_value.user = auth_user
+
+    # Set up chainable query mock for table operations
+    query = make_chainable_query()
+    mock.table.return_value = query
+
+    with patch('app.routes.auth.get_supabase', return_value=mock), \
+         patch('app.routes.emblems.get_supabase', return_value=mock), \
+         patch('app.routes.keys.get_supabase', return_value=mock):
         yield mock
 
 
 @pytest.fixture
-def mock_auth_user():
-    """Mock authenticated user."""
-    return {
-        "id": "user-123",
-        "email": "test@example.com",
-        "user_metadata": {
-            "username": "testuser"
-        }
-    }
+def mock_auth_user(mock_supabase):
+    """Mock authenticated user (uses the auth user configured in mock_supabase)."""
+    return mock_supabase.auth.get_user.return_value.user
 
 
 @pytest.fixture
@@ -44,7 +64,7 @@ def mock_emblem():
     return {
         "id": "emblem-123",
         "name": "test-api",
-        "description": "Test API",
+        "description": "Test API description",
         "author_id": "user-123",
         "author_name": "testuser",
         "category": "general",

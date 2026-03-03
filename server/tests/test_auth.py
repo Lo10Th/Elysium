@@ -14,6 +14,7 @@ class TestAuthRoutes:
         mock_response.user = mock_auth_user
         mock_response.session = MagicMock()
         mock_response.session.access_token = "test-token"
+        mock_response.session.refresh_token = "test-refresh-token"
         mock_supabase.auth.sign_up.return_value = mock_response
 
         # Make request
@@ -120,6 +121,7 @@ class TestAuthRoutes:
         """Test token refresh."""
         # Mock Supabase refresh
         mock_response = MagicMock()
+        mock_response.user = mock_auth_user
         mock_response.session = MagicMock()
         mock_response.session.access_token = "new-test-token"
         mock_response.session.refresh_token = "new-refresh-token"

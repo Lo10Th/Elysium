@@ -3,16 +3,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, field_validator
 from app.database import get_supabase
+from app.limiter import limiter, PUBLIC_LIMIT, STRICT_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
 from app.models import User
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 import urllib.parse
 import secrets
 import re
 
 router = APIRouter()
 security = HTTPBearer()
-limiter = Limiter(key_func=get_remote_address)
 
 oauth_states: dict[str, str] = {}
 
@@ -94,15 +92,15 @@ async def get_current_user_optional(
 
 
 @router.post("/register", response_model=AuthResponse)
-@limiter.limit("5/minute")
-async def register(request: Request, body: RegisterRequest):
+@limiter.limit(REGISTER_LIMIT)
+async def register(request: Request, request_body: RegisterRequest):
     try:
         supabase = get_supabase()
         response = supabase.auth.sign_up(
             {
-                "email": body.email,
-                "password": body.password,
-                "options": {"data": {"username": body.username}},
+                "email": request_body.email,
+                "password": request_body.password,
+                "options": {"data": {"username": request_body.username}},
             }
         )
 
@@ -115,7 +113,7 @@ async def register(request: Request, body: RegisterRequest):
             user=User(
                 id=response.user.id,
                 email=response.user.email or "",
-                username=body.username,
+                username=request_body.username,
             ),
         )
     except HTTPException:
@@ -125,12 +123,12 @@ async def register(request: Request, body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("10/minute")
-async def login(request: Request, body: LoginRequest):
+@limiter.limit(STRICT_LIMIT)
+async def login(request: Request, request_body: LoginRequest):
     try:
         supabase = get_supabase()
         response = supabase.auth.sign_in_with_password(
-            {"email": body.email, "password": body.password}
+            {"email": request_body.email, "password": request_body.password}
         )
 
         if not response.user or not response.session:
@@ -150,7 +148,8 @@ async def login(request: Request, body: LoginRequest):
 
 
 @router.post("/logout")
-async def logout(user: User = Depends(get_current_user)):
+@limiter.limit(PUBLIC_LIMIT)
+async def logout(request: Request, user: User = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         supabase.auth.sign_out()
@@ -160,10 +159,11 @@ async def logout(user: User = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=AuthResponse)
-async def refresh_token(request: TokenRefreshRequest):
+@limiter.limit(REFRESH_LIMIT)
+async def refresh_token(request: Request, request_body: TokenRefreshRequest):
     try:
         supabase = get_supabase()
-        response = supabase.auth.refresh_session(request.refresh_token)
+        response = supabase.auth.refresh_session(request_body.refresh_token)
 
         if not response.session:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -177,17 +177,21 @@ async def refresh_token(request: TokenRefreshRequest):
                 username=None,
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
 @router.get("/me", response_model=User)
-async def get_me(user: User = Depends(get_current_user)):
+@limiter.limit(PUBLIC_LIMIT)
+async def get_me(request: Request, user: User = Depends(get_current_user)):
     return user
 
 
 @router.get("/oauth/start")
-async def oauth_start(redirect_uri: str, request: Request):
+@limiter.limit(STRICT_LIMIT)
+async def oauth_start(request: Request, redirect_uri: str):
     raise HTTPException(
         status_code=501,
         detail="OAuth login is not implemented yet. Please use email/password login via 'ely login' or POST /api/auth/login",
@@ -195,7 +199,8 @@ async def oauth_start(redirect_uri: str, request: Request):
 
 
 @router.get("/oauth/callback")
-async def oauth_callback(state: str, code: str = "", error: str = ""):
+@limiter.limit(STRICT_LIMIT)
+async def oauth_callback(request: Request, state: str, code: str = "", error: str = ""):
     raise HTTPException(
         status_code=501,
         detail="OAuth login is not implemented yet. Please use email/password login via 'ely login' or POST /api/auth/login",

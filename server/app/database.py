@@ -1,3 +1,4 @@
+from typing import Optional
 from supabase import create_client, Client
 from app.config import get_settings
 

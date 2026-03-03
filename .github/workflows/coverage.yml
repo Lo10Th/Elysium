@@ -1,0 +1,70 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          go install github.com/ory/go-coverage@latest || true
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Calculate Go coverage
+        working-directory: cli
+        run: |
+          go test -coverprofile=coverage.out ./...
+          COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "GO_COVERAGE=$COV" >> $GITHUB_ENV
+          echo "Go coverage: ${COV}%"
+      
+      - name: Calculate Python coverage
+        working-directory: server
+        run: |
+          pytest --cov=app --cov-report=term --cov-report=json
+          COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])" 2>/dev/null || echo "0")
+          echo "PYTHON_COVERAGE=$COV" >> $GITHUB_ENV
+          echo "Python coverage: ${COV}%"
+      
+      - name: Check coverage threshold
+        run: |
+          GO=${GO_COVERAGE:-0}
+          PY=${PYTHON_COVERAGE:-0}
+          echo "Go coverage: ${GO}%"
+          echo "Python coverage: ${PY}%"
+          
+          PASS=true
+          if (( $(echo "$GO < 80" | bc -l) )); then
+            echo "::error::Go coverage ${GO}% is below 80% threshold"
+            PASS=false
+          fi
+          if (( $(echo "$PY < 80" | bc -l) )); then
+            echo "::error::Python coverage ${PY}% is below 80% threshold"
+            PASS=false
+          fi
+          
+          if [ "$PASS" = false ]; then
+            echo "Coverage check failed!"
+            exit 1
+          fi
+          
+          echo "All coverage checks passed!"

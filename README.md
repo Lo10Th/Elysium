@@ -1,7 +1,12 @@
 # Elysium - The API App Store
 
-**Version**: 1.0.0  
-**Status**: Production Ready
+[![Test Coverage](https://img.shields.io/badge/coverage-0%25-red.svg)](https://github.com/Lo10Th/Elysium)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Lo10Th/Elysium)](https://goreportcard.com/report/github.com/Lo10Th/Elysium)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/release/Lo10Th/Elysium.svg)](https://github.com/Lo10Th/Elysium/releases)
+
+**Version**: 0.1.0  
+**Status**: In Development
 
 Elysium is an API app store that allows developers and AI agents to discover, download, and use APIs programmatically through defined emblems—YAML files that describe an API's endpoints, parameters, authentication, and types.
 

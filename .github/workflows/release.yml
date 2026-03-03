@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Go dependencies
+        working-directory: cli
+        run: go mod download
+      
+      - name: Test Go
+        working-directory: cli
+        run: go test -v -race ./...
+      
+      - name: Install Python dependencies
+        working-directory: server
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      
+      - name: Test Python
+        working-directory: server
+        run: pytest -v
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Build binary
+        working-directory: cli
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          BINARY_NAME=ely
+          if [ "$GOOS" = "windows" ]; then
+            BINARY_NAME=ely.exe
+          fi
+          go build -ldflags="-s -w" -o bin/${GOOS}_${GOARCH}/${BINARY_NAME} .
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ely-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: cli/bin/${{ matrix.goos }}_${{ matrix.goarch }}/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cd artifacts
+          for dir in */; do
+            cd "$dir"
+            tar -czf ../../release/${dir%/}.tar.gz *
+            cd ..
+          done
+      
+      - name: Generate CHANGELOG
+        id: changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          ./scripts/generate-changelog.sh $VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: release/*.tar.gz
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -30,7 +30,16 @@ APIs are everywhere, but using them requires:
 ### Installation
 
 ```bash
-# Using Go install (recommended)
+# One-line install (Linux/macOS)
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
+
+# Or with wget
+wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
+
+# Install a specific version
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.1.0
+
+# Using Go install
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest
 
 # Download binary from GitHub Releases

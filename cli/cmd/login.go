@@ -1,229 +1,287 @@
 package cmd
 
 import (
-	"context"
-	"crypto/rand"
-	"encoding/base64"
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"os/exec"
+	"os"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/elysium/elysium/cli/internal/config"
 	"github.com/elysium/elysium/cli/internal/errfmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
+
+var loginEmail string
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with the Elysium registry",
-	Long: `Authenticate with the Elysium registry by opening your browser
-to the login page. A local server will receive the OAuth callback.`,
+	Long: `Authenticate with the Elysium registry using email and password.
+
+If you don't have an account, you'll be prompted to register.`,
 	RunE: runLogin,
 }
 
-type tokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	Error        string `json:"error"`
-}
-
 func init() {
+	loginCmd.Flags().StringVarP(&loginEmail, "email", "e", "", "Email address")
 	rootCmd.AddCommand(loginCmd)
 }
 
-func runLogin(cmd *cobra.Command, args []string) error {
-	verbose, _ := cmd.Flags().GetBool("verbose")
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
+type registerRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+type authResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	User         struct {
+		ID       string `json:"id"`
+		Email    string `json:"email"`
+		Username string `json:"username"`
+	} `json:"user"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Detail  string `json:"detail"`
+}
+
+func runLogin(cmd *cobra.Command, args []string) error {
 	registry := viper.GetString("registry")
 	if registry == "" {
 		registry = "https://ely.karlharrenga.com"
 	}
 
-	state, err := generateRandomState()
-	if err != nil {
-		return fmt.Errorf("failed to generate state: %w", err)
-	}
-
-	port, err := findAvailablePort()
-	if err != nil {
-		return fmt.Errorf("failed to find available port: %w", err)
-	}
-
-	if verbose {
-		fmt.Printf("Starting local server on port %d...\n", port)
-	}
-
-	tokenChan := make(chan *tokenResponse, 1)
-	errChan := make(chan error, 1)
-
-	server := startLocalServer(port, state, tokenChan, errChan)
-	if server == nil {
-		return fmt.Errorf("failed to start local server")
-	}
-
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		server.Shutdown(ctx)
-		cancel()
-	}()
-
-	redirectURI := fmt.Sprintf("http://localhost:%d/callback", port)
-	loginURL := fmt.Sprintf("%s/api/auth/oauth/start?redirect_uri=%s&state=%s",
-		registry,
-		redirectURI,
-		state)
-
-	fmt.Println("Opening browser for authentication...")
-	fmt.Println()
-	fmt.Println("If the browser does not open, visit:")
-	fmt.Printf("  %s\n", loginURL)
-	fmt.Println()
-
-	if err := openBrowser(loginURL); err != nil {
-		fmt.Println("Could not open browser automatically. Please visit the URL manually.")
-	}
-
-	fmt.Println("Waiting for authentication...")
-
-	timeout := time.NewTimer(5 * time.Minute)
-	defer timeout.Stop()
-
-	select {
-	case token := <-tokenChan:
-		if token.Error != "" {
-			return fmt.Errorf("authentication error: %s", token.Error)
+	// Get email
+	email := loginEmail
+	if email == "" {
+		fmt.Print("Email: ")
+		reader := bufio.NewReader(os.Stdin)
+		var err error
+		email, err = reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read email: %w", err)
 		}
+		email = strings.TrimSpace(email)
+	}
 
-		if err := config.SetToken(token.AccessToken); err != nil {
-			return fmt.Errorf("failed to store token: %w", err)
-		}
+	if email == "" {
+		return fmt.Errorf("email is required")
+	}
 
-		fmt.Println()
-		fmt.Println("Authentication successful!")
-		fmt.Println("Your token has been stored securely.")
-		return nil
+	// Get password
+	fmt.Print("Password: ")
+	passwordBytes, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		return fmt.Errorf("failed to read password: %w", err)
+	}
+	password := string(passwordBytes)
 
-	case err := <-errChan:
-		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "connect: connection refused") {
+	if password == "" {
+		return fmt.Errorf("password is required")
+	}
+
+	// Try to login first
+	authResp, err := attemptLogin(registry, email, password)
+	if err == nil && authResp.AccessToken != "" {
+		// Login successful
+		return saveTokenAndSuccess(authResp)
+	}
+
+	// Check if it was an authentication error vs network error
+	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "no such host") {
 			return errfmt.ConnectionError(registry, err)
 		}
-		if strings.Contains(err.Error(), "timeout") {
-			return errfmt.NewDetailedError(err).
-				WithReason("Authentication timed out").
-				WithContext("Timeout", "5 minutes").
-				WithSuggestion("Try again or check your network connection")
+		return errfmt.NetworkError(err)
+	}
+
+	// Login failed - check if user wants to register
+	fmt.Println()
+	fmt.Println("Authentication failed. Would you like to register a new account? (y/n): ")
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(strings.ToLower(answer))
+
+	if answer != "y" && answer != "yes" {
+		return fmt.Errorf("login cancelled")
+	}
+
+	// Register
+	return registerUser(registry, email, password)
+}
+
+func attemptLogin(registry, email, password string) (*authResponse, error) {
+	reqBody := loginRequest{
+		Email:    email,
+		Password: password,
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/auth/login", registry)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var authResp authResponse
+	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Check for error response
+	if resp.StatusCode != 200 {
+		if authResp.Detail != "" {
+			return nil, fmt.Errorf("%s", authResp.Detail)
+		}
+		if authResp.Message != "" {
+			return nil, fmt.Errorf("%s", authResp.Message)
+		}
+		return nil, fmt.Errorf("login failed with status %d", resp.StatusCode)
+	}
+
+	return &authResp, nil
+}
+
+func registerUser(registry, email, password string) error {
+	// Get username
+	fmt.Println()
+	fmt.Println("Creating a new account...")
+	fmt.Print("Username: ")
+	reader := bufio.NewReader(os.Stdin)
+	username, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read username: %w", err)
+	}
+	username = strings.TrimSpace(username)
+
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	// Confirm password
+	fmt.Print("Confirm password: ")
+	confirmBytes, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		return fmt.Errorf("failed to read password confirmation: %w", err)
+	}
+	confirmPassword := string(confirmBytes)
+
+	if password != confirmPassword {
+		return fmt.Errorf("passwords do not match")
+	}
+
+	// Register
+	reqBody := registerRequest{
+		Email:    email,
+		Password: password,
+		Username: username,
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/auth/register", registry)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "no such host") {
+			return errfmt.ConnectionError(registry, err)
 		}
 		return errfmt.NetworkError(err)
-
-	case <-timeout.C:
-		return fmt.Errorf("authentication timed out after 5 minutes")
 	}
-}
+	defer resp.Body.Close()
 
-func generateRandomState() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-func findAvailablePort() (int, error) {
-	for port := 8080; port <= 8090; port++ {
-		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err == nil {
-			ln.Close()
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("no available ports found between 8080-8090")
-}
-
-func startLocalServer(port int, expectedState string, tokenChan chan<- *tokenResponse, errChan chan<- error) *http.Server {
-	mux := http.NewServeMux()
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
+	var authResp authResponse
+	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		query := r.URL.Query()
-
-		if errMsg := query.Get("error"); errMsg != "" {
-			tokenChan <- &tokenResponse{Error: errMsg}
-			http.Error(w, errMsg, http.StatusBadRequest)
-			return
+	// Check for error response
+	if resp.StatusCode != 201 && resp.StatusCode != 200 {
+		if authResp.Detail != "" {
+			return fmt.Errorf("registration failed: %s", authResp.Detail)
 		}
-
-		state := query.Get("state")
-		if state != expectedState {
-			errChan <- fmt.Errorf("invalid state parameter")
-			http.Error(w, "Invalid state", http.StatusBadRequest)
-			return
+		if authResp.Message != "" {
+			return fmt.Errorf("registration failed: %s", authResp.Message)
 		}
-
-		accessToken := query.Get("access_token")
-		refreshToken := query.Get("refresh_token")
-		tokenType := query.Get("token_type")
-
-		if accessToken == "" {
-			errChan <- fmt.Errorf("no access token received")
-			http.Error(w, "No access token", http.StatusBadRequest)
-			return
-		}
-
-		tokenChan <- &tokenResponse{
-			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
-			TokenType:    tokenType,
-		}
-
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
-<head><title>Authentication Successful</title></head>
-<body style="font-family: sans-serif; text-align: center; padding: 50px;">
-<h1 style="color: #22c55e;">Authentication Successful!</h1>
-<p>You can close this window and return to the CLI.</p>
-<script>setTimeout(function() { window.close(); }, 2000);</script>
-</body>
-</html>`)
-	})
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errChan <- err
-		}
-	}()
-
-	return server
-}
-
-func openBrowser(url string) error {
-	var cmd *exec.Cmd
-
-	switch {
-	case isCommandAvailable("open"):
-		cmd = exec.Command("open", url)
-	case isCommandAvailable("xdg-open"):
-		cmd = exec.Command("xdg-open", url)
-	case isCommandAvailable("rundll32"):
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		return fmt.Errorf("no browser command available")
+		return fmt.Errorf("registration failed with status %d", resp.StatusCode)
 	}
 
-	return cmd.Start()
+	fmt.Println()
+	fmt.Println("✓ Account created successfully!")
+	return saveTokenAndSuccess(&authResp)
 }
 
-func isCommandAvailable(name string) bool {
-	_, err := exec.LookPath(name)
-	return err == nil
+func saveTokenAndSuccess(authResp *authResponse) error {
+	if authResp.AccessToken == "" {
+		return fmt.Errorf("no access token received")
+	}
+
+	// Store token
+	if err := config.SetToken(authResp.AccessToken); err != nil {
+		return fmt.Errorf("failed to store token: %w", err)
+	}
+
+	// Store refresh token if available
+	if authResp.RefreshToken != "" {
+		if err := config.SetRefreshToken(authResp.RefreshToken); err != nil {
+			// Non-fatal, just log it
+			fmt.Println("Warning: Could not store refresh token")
+		}
+	}
+
+	// Store user info
+	if authResp.User.Email != "" {
+		config.SetUserEmail(authResp.User.Email)
+	}
+	if authResp.User.Username != "" {
+		config.SetUsername(authResp.User.Username)
+	}
+
+	fmt.Println()
+	if authResp.User.Username != "" {
+		fmt.Printf("✓ Logged in as %s (%s)\n", authResp.User.Username, authResp.User.Email)
+	} else {
+		fmt.Printf("✓ Logged in as %s\n", authResp.User.Email)
+	}
+	fmt.Println("Your credentials have been stored securely.")
+
+	return nil
 }

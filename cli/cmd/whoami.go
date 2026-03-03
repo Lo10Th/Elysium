@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/elysium/elysium/cli/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/zalando/go-keyring"
 )
 
 var whoamiCmd = &cobra.Command{
@@ -13,27 +13,46 @@ var whoamiCmd = &cobra.Command{
 	Short: "Display the currently logged in user",
 	Long:  `Show the email and username of the currently authenticated user.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		token, err := keyring.Get("elysium", "token")
-		if err != nil {
+		cfg := config.Get()
+
+		if cfg.Token == "" {
 			fmt.Println("Not logged in. Run 'ely login' first.")
 			return nil
 		}
 
-		verbose, _ := cmd.Flags().GetBool("verbose")
-		if verbose {
-			fmt.Printf("Token: %s...\n", token[:20])
-		}
-
 		registry := viper.GetString("registry")
 		if registry == "" {
-			registry = "https://ely.karlharrenga.com"
+			registry = cfg.Registry
 		}
 
-		fmt.Printf("Logged in via: %s\n", registry)
-		fmt.Println("Token is stored in system keyring.")
+		// Show user info
+		if cfg.Username != "" && cfg.UserEmail != "" {
+			fmt.Printf("Logged in as: %s (%s)\n", cfg.Username, cfg.UserEmail)
+		} else if cfg.UserEmail != "" {
+			fmt.Printf("Logged in as: %s\n", cfg.UserEmail)
+		} else if cfg.Username != "" {
+			fmt.Printf("Logged in as: %s\n", cfg.Username)
+		} else {
+			fmt.Println("Logged in (user details not available)")
+		}
+
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		if verbose {
+			fmt.Printf("\nRegistry: %s\n", registry)
+			if cfg.Token != "" {
+				fmt.Printf("Token: %s...\n", cfg.Token[:min(20, len(cfg.Token))])
+			}
+		}
 
 		return nil
 	},
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func init() {

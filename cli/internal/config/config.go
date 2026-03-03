@@ -9,11 +9,14 @@ import (
 )
 
 type Config struct {
-	Registry   string            `yaml:"registry"`
-	Token      string            `yaml:"token,omitempty"`
-	CurrentKey string            `yaml:"current_key,omitempty"`
-	CacheDir   string            `yaml:"cache_dir"`
-	Installed  map[string]string `yaml:"installed"`
+	Registry     string            `yaml:"registry"`
+	Token        string            `yaml:"token,omitempty"`
+	RefreshToken string            `yaml:"refresh_token,omitempty"`
+	CurrentKey   string            `yaml:"current_key,omitempty"`
+	CacheDir     string            `yaml:"cache_dir"`
+	UserEmail    string            `yaml:"user_email,omitempty"`
+	Username     string            `yaml:"username,omitempty"`
+	Installed    map[string]string `yaml:"installed"`
 }
 
 var (
@@ -152,5 +155,40 @@ func GetCurrentKey() string {
 
 func SetCurrentKey(keyID string) error {
 	config.CurrentKey = keyID
+	return Save()
+}
+
+func SetRefreshToken(token string) error {
+	config.RefreshToken = token
+	return Save()
+}
+
+func GetRefreshToken() string {
+	return config.RefreshToken
+}
+
+func SetUserEmail(email string) {
+	config.UserEmail = email
+	Save()
+}
+
+func GetUserEmail() string {
+	return config.UserEmail
+}
+
+func SetUsername(username string) {
+	config.Username = username
+	Save()
+}
+
+func GetUsername() string {
+	return config.Username
+}
+
+func ClearAuth() error {
+	config.Token = ""
+	config.RefreshToken = ""
+	config.UserEmail = ""
+	config.Username = ""
 	return Save()
 }

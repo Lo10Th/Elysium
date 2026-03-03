@@ -1,7 +1,15 @@
 """Pytest fixtures and configuration for Elysium server tests."""
+import os
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from fastapi.testclient import TestClient
+
+# Set test environment variables BEFORE importing app
+os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+os.environ["SUPABASE_ANON_KEY"] = "test-anon-key"
+os.environ["SUPABASE_SERVICE_KEY"] = "test-service-key"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+
 from app.main import app
 
 

@@ -74,6 +74,15 @@ jobs:
             
             ### Installation
             
+            #### Homebrew (macOS / Linux)
+            
+            ```bash
+            brew tap Lo10Th/tap
+            brew install ely
+            ```
+            
+            #### Download binary
+            
             Download the appropriate binary for your platform:
             
             - **Linux (amd64)**: ely-linux-amd64.tar.gz
@@ -105,3 +114,29 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew formula
+        run: |
+          chmod +x scripts/update-homebrew.sh
+          ./scripts/update-homebrew.sh "${{ github.ref_name }}"
+
+      - name: Commit updated formula
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ely.rb
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update Homebrew formula to ${{ github.ref_name }}"
+            git push origin main
+          fi

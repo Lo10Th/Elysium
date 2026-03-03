@@ -1,5 +1,7 @@
 # Elysium - The API App Store
 
+[![Test](https://github.com/Lo10Th/Elysium/actions/workflows/test.yml/badge.svg)](https://github.com/Lo10Th/Elysium/actions/workflows/test.yml)
+[![Release](https://github.com/Lo10Th/Elysium/actions/workflows/release.yml/badge.svg)](https://github.com/Lo10Th/Elysium/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Lo10Th/Elysium)](https://goreportcard.com/report/github.com/Lo10Th/Elysium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -38,6 +40,10 @@ wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.
 
 # Install a specific version
 curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.1.0
+
+# Using Homebrew (macOS / Linux)
+brew tap Lo10Th/tap
+brew install ely
 
 # Using Go install
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest

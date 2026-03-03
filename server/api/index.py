@@ -1,15 +1,20 @@
 """
-Vercel serverless function entry point.
+Vercel serverless function entry point - DEBUG VERSION
 """
 
-import os
-import sys
+import json
 
-# Add the parent directory to Python path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import the FastAPI app
-from app.main import app
-
-# Export for Vercel
-handler = app
+def handler(event, context):
+    """Simple test handler for debugging Vercel deployment"""
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(
+            {
+                "status": "healthy",
+                "message": "Debug handler works!",
+                "event_type": type(event).__name__,
+            }
+        ),
+    }

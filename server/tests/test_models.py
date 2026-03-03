@@ -15,32 +15,41 @@ class TestEmblemModels:
         data = {
             "name": "test-api",
             "version": "1.0.0",
-            "description": "Test API",
+            "description": "A test API for testing purposes",
+            "yaml_content": "apiVersion: v1\nname: test-api",
             "license": "MIT"
         }
         emblem = EmblemCreate(**data)
         assert emblem.name == "test-api"
         assert emblem.version == "1.0.0"
-        assert emblem.description == "Test API"
+        assert emblem.description == "A test API for testing purposes"
         assert emblem.license == "MIT"
 
     def test_emblem_create_minimal(self):
-        """Test emblem creation with minimal fields."""
-        data = {"name": "test-api", "version": "1.0.0", "license": "MIT"}
+        """Test emblem creation with minimal required fields."""
+        data = {
+            "name": "test-api",
+            "version": "1.0.0",
+            "description": "Minimal test API",
+            "yaml_content": "apiVersion: v1\nname: test-api",
+        }
         emblem = EmblemCreate(**data)
         assert emblem.name == "test-api"
-        assert emblem.description is None
+        assert emblem.category is None
 
     def test_emblem_response(self):
         """Test emblem response model."""
         from app.models import Emblem
+        from datetime import datetime
         data = {
             "id": "emblem-123",
             "name": "test-api",
             "description": "Test API",
             "license": "MIT",
             "latest_version": "1.0.0",
-            "downloads_count": 100
+            "downloads_count": 100,
+            "created_at": datetime(2024, 1, 1),
+            "updated_at": datetime(2024, 1, 2),
         }
         response = Emblem(**data)
         assert response.id == "emblem-123"
@@ -48,14 +57,17 @@ class TestEmblemModels:
 
     def test_emblem_version_valid(self):
         """Test valid emblem version."""
+        from datetime import datetime
         data = {
+            "id": "version-123",
+            "emblem_id": "emblem-123",
             "version": "1.0.0",
-            "yaml_content": "apiVersion: v1\nname: test",
-            "readme_content": "# Test API"
+            "yaml_content": "apiVersion: v1\nname: test-api",
+            "published_at": datetime(2024, 1, 1),
         }
         version = EmblemVersion(**data)
         assert version.version == "1.0.0"
-        assert "# Test API" in version.readme_content
+        assert version.yaml_content == "apiVersion: v1\nname: test-api"
 
 
 class TestKeyModels:

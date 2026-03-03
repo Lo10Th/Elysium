@@ -1,0 +1,81 @@
+"""Pytest fixtures and configuration for Elysium server tests."""
+import pytest
+from unittest.mock import Mock, MagicMock, patch
+from fastapi.testclient import TestClient
+from app.main import app
+
+
+@pytest.fixture
+def client():
+    """Create a test client for the FastAPI app."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def mock_supabase():
+    """Mock Supabase client."""
+    with patch('app.database.supabase') as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_auth_user():
+    """Mock authenticated user."""
+    return {
+        "id": "user-123",
+        "email": "test@example.com",
+        "user_metadata": {
+            "username": "testuser"
+        }
+    }
+
+
+@pytest.fixture
+def mock_emblem():
+    """Mock emblem data."""
+    return {
+        "id": "emblem-123",
+        "name": "test-api",
+        "description": "Test API",
+        "author_id": "user-123",
+        "author_name": "testuser",
+        "category": "general",
+        "tags": ["test", "api"],
+        "license": "MIT",
+        "repository_url": "https://github.com/test/test-api",
+        "homepage_url": "https://test-api.example.com",
+        "latest_version": "1.0.0",
+        "downloads_count": 100,
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-02T00:00:00Z"
+    }
+
+
+@pytest.fixture
+def mock_key():
+    """Mock API key."""
+    return {
+        "id": "key-123",
+        "name": "test-key",
+        "key": "sk_test_abc123",
+        "created_at": "2024-01-01T00:00:00Z",
+        "expires_at": None
+    }
+
+
+@pytest.fixture
+def auth_headers():
+    """Mock authorization headers."""
+    return {"Authorization": "Bearer test-token"}
+
+
+@pytest.fixture
+def mock_supabase_response():
+    """Mock Supabase query response."""
+    def _make_response(data=None, error=None):
+        response = MagicMock()
+        response.data = data or []
+        response.error = error
+        response.status_code = 200 if not error else 400
+        return response
+    return _make_response

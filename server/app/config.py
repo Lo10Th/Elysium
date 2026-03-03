@@ -72,9 +72,5 @@ def get_settings() -> Settings:
     return _settings
 
 
-# For backward compatibility with direct access
-settings = get_settings()
-
-# If custom domain is set, use it for CORS
-if settings.DOMAIN:
-    settings.CORS_ORIGINS = [f"https://{settings.DOMAIN}"]
+# For backward compatibility, but accessed via get_settings() in routes
+# DO NOT access this at module level - it will fail if env vars are not set

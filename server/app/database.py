@@ -17,5 +17,4 @@ def get_supabase() -> Client:
     return _supabase
 
 
-# For backward compatibility
-supabase = get_supabase()
+# DO NOT access at module level - use get_supabase() in routes

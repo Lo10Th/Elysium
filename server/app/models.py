@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel, Field, constr
 from enum import Enum
 
@@ -32,8 +32,8 @@ class Parameter(BaseModel):
     in_: ParameterLocation = Field(..., alias="in")
     required: bool = False
     description: Optional[str] = None
-    default: Optional[any] = None
-    enum: Optional[List[any]] = None
+    default: Optional[Any] = None
+    enum: Optional[List[Any]] = None
 
     class Config:
         populate_by_name = True

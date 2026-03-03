@@ -110,6 +110,31 @@ func GetCacheDir() string {
 	return config.CacheDir
 }
 
+func GetRegistry() string {
+	return config.Registry
+}
+
+func GetOutput() string {
+	return "table"
+}
+
+func GetInstalledEmblems() map[string]string {
+	return config.Installed
+}
+
+func GetEmblemConfig(name string) (map[string]interface{}, error) {
+	cfg := make(map[string]interface{})
+
+	cfg["cache_dir"] = config.CacheDir
+	cfg["registry"] = config.Registry
+
+	if version, ok := config.Installed[name]; ok {
+		cfg["version"] = version
+	}
+
+	return cfg, nil
+}
+
 func GetEmblemCachePath(name, version string) string {
 	return filepath.Join(config.CacheDir, fmt.Sprintf("%s@%s", name, version))
 }

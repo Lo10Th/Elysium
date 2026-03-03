@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var Version = "0.1.0"
+var Version = "0.1.1"
 
 var rootCmd = &cobra.Command{
 	Use:                "ely",

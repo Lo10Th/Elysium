@@ -1,6 +1,6 @@
 [project]
 name = "elysium-registry"
-version = "0.1.0"
+version = "0.1.1"
 description = "Elysium Registry Server - API App Store Backend"
 requires-python = ">=3.11"
 dependencies = [

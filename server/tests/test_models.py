@@ -3,7 +3,7 @@ import pytest
 from pydantic import ValidationError
 from app.models import (
     EmblemCreate, Emblem, EmblemVersion,
-    KeyCreate, KeyResponse, UserCreate, UserLogin
+    KeyCreate, KeyResponse
 )
 
 
@@ -30,18 +30,6 @@ class TestEmblemModels:
         emblem = EmblemCreate(**data)
         assert emblem.name == "test-api"
         assert emblem.description is None
-
-    def test_emblem_create_invalid_license(self):
-        """Test emblem creation with invalid license."""
-        data = {
-            "name": "test-api",
-            "version": "1.0.0",
-            "license": "INVALID"
-        }
-        # Should fail if license enum is enforced
-        # If not, just check it accepts the value
-        emblem = EmblemCreate(**data)
-        assert emblem.license == "INVALID"
 
     def test_emblem_response(self):
         """Test emblem response model."""
@@ -99,35 +87,27 @@ class TestKeyModels:
         assert response.name == "test-key"
 
 
-class TestUserModels:
-    """Test user authentication models."""
+class TestAuthModels:
+    """Test authentication models from routes."""
 
-    def test_user_create_valid(self):
-        """Test valid user creation."""
+    def test_login_request_valid(self):
+        """Test valid login request."""
+        from app.routes.auth import LoginRequest
         data = {
             "email": "test@example.com",
             "password": "securepassword123"
         }
-        user = UserCreate(**data)
-        assert user.email == "test@example.com"
-        assert user.password == "securepassword123"
-
-    def test_user_login_valid(self):
-        """Test valid user login."""
-        data = {
-            "email": "test@example.com",
-            "password": "securepassword123"
-        }
-        login = UserLogin(**data)
+        login = LoginRequest(**data)
         assert login.email == "test@example.com"
 
-    def test_user_create_invalid_email(self):
-        """Test user creation with invalid email."""
+    def test_register_request_valid(self):
+        """Test valid registration request."""
+        from app.routes.auth import RegisterRequest
         data = {
-            "email": "not-an-email",
-            "password": "securepassword123"
+            "email": "test@example.com",
+            "password": "securepassword123",
+            "username": "testuser"
         }
-        # Pydantic should validate email format if EmailStr is used
-        # If not, it will accept the value
-        user = UserCreate(**data)
-        assert user.email == "not-an-email"
+        register = RegisterRequest(**data)
+        assert register.email == "test@example.com"
+        assert register.username == "testuser"

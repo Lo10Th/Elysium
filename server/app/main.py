@@ -11,13 +11,11 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-_settings = get_settings()
-
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title=_settings.APP_NAME,
-    version=_settings.APP_VERSION,
+    title="Elysium Registry",
+    version="1.0.0",
     description="Registry for API emblems - discover and use APIs programmatically",
 )
 
@@ -25,7 +23,7 @@ app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_settings.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,14 +42,14 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "version": _settings.APP_VERSION}
+    return {"status": "healthy", "version": "1.0.0"}
 
 
 @app.get("/")
 async def root():
     return {
-        "name": _settings.APP_NAME,
-        "version": _settings.APP_VERSION,
+        "name": "Elysium Registry",
+        "version": "1.0.0",
         "docs": "/docs",
         "health": "/health",
     }
@@ -65,4 +63,5 @@ app.include_router(keys.router, prefix="/api/keys", tags=["API Keys"])
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host=_settings.HOST, port=_settings.PORT)
+    settings = get_settings()
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

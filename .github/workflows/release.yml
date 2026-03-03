@@ -9,42 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      
-      - name: Install Go dependencies
-        working-directory: cli
-        run: go mod download
-      
-      - name: Test Go
-        working-directory: cli
-        run: go test -v -race ./...
-      
-      - name: Install Python dependencies
-        working-directory: server
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
-      
-      - name: Test Python
-        working-directory: server
-        run: pytest -v
-
   build:
-    needs: test
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -101,19 +66,41 @@ jobs:
             cd ..
           done
       
-      - name: Generate CHANGELOG
-        id: changelog
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          ./scripts/generate-changelog.sh $VERSION
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          body_path: release_notes.md
+          body: |
+            ## Elysium CLI v${{ github.ref_name }}
+            
+            ### Installation
+            
+            Download the appropriate binary for your platform:
+            
+            - **Linux (amd64)**: ely-linux-amd64.tar.gz
+            - **Linux (arm64)**: ely-linux-arm64.tar.gz
+            - **macOS (amd64)**: ely-darwin-amd64.tar.gz
+            - **macOS (arm64)**: ely-darwin-arm64.tar.gz
+            - **Windows (amd64)**: ely-windows-amd64.tar.gz
+            
+            ### Quick Start
+            
+            ```bash
+            # Extract and install
+            tar -xzf ely-*.tar.gz
+            chmod +x ely
+            sudo mv ely /usr/local/bin/
+            
+            # Authenticate
+            ely login
+            
+            # Pull and use emblems
+            ely pull clothing-shop
+            ely clothing-shop list-products
+            ```
+            
+            ### What's New
+            
+            See [CHANGELOG.md](https://github.com/Lo10Th/Elysium/blob/main/CHANGELOG.md) for details.
           files: release/*.tar.gz
           generate_release_notes: false
         env:

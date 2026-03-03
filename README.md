@@ -32,7 +32,11 @@ APIs are everywhere, but using them requires:
 ### Installation
 
 ```bash
-# Using Go install (recommended)
+# Using Homebrew (macOS / Linux)
+brew tap Lo10Th/tap
+brew install ely
+
+# Using Go install
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest
 
 # Download binary from GitHub Releases

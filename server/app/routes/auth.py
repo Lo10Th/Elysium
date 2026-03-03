@@ -1,20 +1,26 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from app.database import get_supabase
 from app.models import User
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import urllib.parse
 import secrets
+import re
 
 router = APIRouter()
 security = HTTPBearer()
+limiter = Limiter(key_func=get_remote_address)
 
 oauth_states: dict[str, str] = {}
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
+
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -22,6 +28,22 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     username: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("password must be at least 8 characters")
+        return v
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str) -> str:
+        if not _USERNAME_RE.match(v):
+            raise ValueError(
+                "username must be 3-30 characters and contain only letters, digits, underscores, or hyphens"
+            )
+        return v
 
 
 class TokenRefreshRequest(BaseModel):
@@ -72,14 +94,15 @@ async def get_current_user_optional(
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(request: RegisterRequest):
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest):
     try:
         supabase = get_supabase()
         response = supabase.auth.sign_up(
             {
-                "email": request.email,
-                "password": request.password,
-                "options": {"data": {"username": request.username}},
+                "email": body.email,
+                "password": body.password,
+                "options": {"data": {"username": body.username}},
             }
         )
 
@@ -92,19 +115,22 @@ async def register(request: RegisterRequest):
             user=User(
                 id=response.user.id,
                 email=response.user.email or "",
-                username=request.username,
+                username=body.username,
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(request: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest):
     try:
         supabase = get_supabase()
         response = supabase.auth.sign_in_with_password(
-            {"email": request.email, "password": request.password}
+            {"email": body.email, "password": body.password}
         )
 
         if not response.user or not response.session:
@@ -117,6 +143,8 @@ async def login(request: LoginRequest):
                 id=response.user.id, email=response.user.email or "", username=None
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

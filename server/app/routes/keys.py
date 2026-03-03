@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import secrets
 import hashlib
 from app.database import get_supabase
@@ -14,6 +14,23 @@ router = APIRouter()
 class KeyCreate(BaseModel):
     name: str
     expires_days: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_length(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("name must not be empty")
+        if len(v) > 64:
+            raise ValueError("name must be at most 64 characters")
+        return v
+
+    @field_validator("expires_days")
+    @classmethod
+    def expires_days_range(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and (v < 1 or v > 365):
+            raise ValueError("expires_days must be between 1 and 365")
+        return v
 
 
 class KeyResponse(BaseModel):

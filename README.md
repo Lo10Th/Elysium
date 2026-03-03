@@ -1,5 +1,7 @@
 # Elysium - The API App Store
 
+[![Test](https://github.com/Lo10Th/Elysium/actions/workflows/test.yml/badge.svg)](https://github.com/Lo10Th/Elysium/actions/workflows/test.yml)
+[![Release](https://github.com/Lo10Th/Elysium/actions/workflows/release.yml/badge.svg)](https://github.com/Lo10Th/Elysium/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Lo10Th/Elysium)](https://goreportcard.com/report/github.com/Lo10Th/Elysium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

@@ -18,7 +18,6 @@ jobs:
           go-version: '1.21'
       
       - name: Test CLI
-        continue-on-error: true
         working-directory: cli
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
       
@@ -46,7 +45,6 @@ jobs:
           pip install pytest pytest-cov
       
       - name: Test Server
-        continue-on-error: true
         working-directory: server
         run: pytest --cov=app --cov-report=xml --cov-report=term-missing
       

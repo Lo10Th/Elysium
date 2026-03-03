@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Custom domain
     DOMAIN: Optional[str] = None
 
+    # Frontend URL for redirects (web UI)
+    FRONTEND_URL: str = "https://hub.ely.karlharrenga.com"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

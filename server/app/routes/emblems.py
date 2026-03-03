@@ -102,47 +102,88 @@ async def search_emblems(
 ):
     try:
         supabase = get_supabase()
-        query = supabase.table("emblems").select("*, profiles(username)")
 
-        # Escape LIKE metacharacters to prevent pattern injection
-        safe_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        query = query.or_(f"name.ilike.%{safe_q}%,description.ilike.%{safe_q}%")
+        # Use full-text search if search_vector column exists
+        # Fall back to ILIKE for backwards compatibility
+        try:
+            # Try full-text search with ranking
+            search_query = " & ".join(q.split())  # Convert to tsquery format
 
-        if category:
-            query = query.eq("category", category)
+            response = supabase.rpc(
+                "search_emblems_fts",
+                {
+                    "query": search_query,
+                    "category_filter": category,
+                    "sort_by": sort,
+                    "limit_count": limit,
+                    "offset_count": offset,
+                },
+            ).execute()
 
-        if sort == "downloads":
-            query = query.order("downloads_count", desc=True)
-        elif sort == "recent":
-            query = query.order("created_at", desc=True)
-        elif sort == "name":
-            query = query.order("name")
+            emblems = []
+            for row in response.data:
+                emblem = Emblem(
+                    id=row["id"],
+                    name=row["name"],
+                    description=row["description"],
+                    author_id=row.get("author_id"),
+                    author_name=row.get("author_name"),
+                    category=row.get("category"),
+                    tags=row.get("tags"),
+                    license=row.get("license", "MIT"),
+                    repository_url=row.get("repository_url"),
+                    homepage_url=row.get("homepage_url"),
+                    latest_version=row.get("latest_version"),
+                    downloads_count=row.get("downloads_count", 0),
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                emblems.append(emblem)
 
-        response = query.range(offset, offset + limit - 1).execute()
+            return emblems
+        except Exception:
+            # Fallback to ILIKE search if RPC doesn't exist
+            query = supabase.table("emblems").select("*, profiles(username)")
 
-        emblems = []
-        for row in response.data:
-            emblem = Emblem(
-                id=row["id"],
-                name=row["name"],
-                description=row["description"],
-                author_id=row.get("author_id"),
-                author_name=row.get("profiles", {}).get("username")
-                if row.get("profiles")
-                else None,
-                category=row.get("category"),
-                tags=row.get("tags"),
-                license=row.get("license", "MIT"),
-                repository_url=row.get("repository_url"),
-                homepage_url=row.get("homepage_url"),
-                latest_version=row.get("latest_version"),
-                downloads_count=row.get("downloads_count", 0),
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-            )
-            emblems.append(emblem)
+            # Escape LIKE metacharacters to prevent pattern injection
+            safe_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            query = query.or_(f"name.ilike.%{safe_q}%,description.ilike.%{safe_q}%")
 
-        return emblems
+            if category:
+                query = query.eq("category", category)
+
+            if sort == "downloads":
+                query = query.order("downloads_count", desc=True)
+            elif sort == "recent":
+                query = query.order("created_at", desc=True)
+            elif sort == "name":
+                query = query.order("name")
+
+            response = query.range(offset, offset + limit - 1).execute()
+
+            emblems = []
+            for row in response.data:
+                emblem = Emblem(
+                    id=row["id"],
+                    name=row["name"],
+                    description=row["description"],
+                    author_id=row.get("author_id"),
+                    author_name=row.get("profiles", {}).get("username")
+                    if row.get("profiles")
+                    else None,
+                    category=row.get("category"),
+                    tags=row.get("tags"),
+                    license=row.get("license", "MIT"),
+                    repository_url=row.get("repository_url"),
+                    homepage_url=row.get("homepage_url"),
+                    latest_version=row.get("latest_version"),
+                    downloads_count=row.get("downloads_count", 0),
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                emblems.append(emblem)
+
+            return emblems
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -229,13 +270,18 @@ async def get_emblem_version(request: Request, name: str, version: str):
 
 @router.post("", response_model=Emblem)
 @limiter.limit(AUTH_LIMIT)
-async def create_emblem(request: Request, request_body: EmblemCreate, user: User = Depends(get_current_user)):
+async def create_emblem(
+    request: Request, request_body: EmblemCreate, user: User = Depends(get_current_user)
+):
     validate_emblem_yaml(request_body.yaml_content)
 
     try:
         supabase = get_supabase()
         existing = (
-            supabase.table("emblems").select("id").eq("name", request_body.name).execute()
+            supabase.table("emblems")
+            .select("id")
+            .eq("name", request_body.name)
+            .execute()
         )
 
         if existing.data:
@@ -276,7 +322,11 @@ async def create_emblem(request: Request, request_body: EmblemCreate, user: User
         ).execute()
 
         supabase.table("emblem_pulls").insert(
-            {"emblem_id": emblem_id, "version": request_body.version, "pulled_by": user.id}
+            {
+                "emblem_id": emblem_id,
+                "version": request_body.version,
+                "pulled_by": user.id,
+            }
         ).execute()
 
         return Emblem(
@@ -304,7 +354,10 @@ async def create_emblem(request: Request, request_body: EmblemCreate, user: User
 @router.put("/{name}", response_model=Emblem)
 @limiter.limit(AUTH_LIMIT)
 async def update_emblem(
-    request: Request, name: str, request_body: EmblemUpdate, user: User = Depends(get_current_user)
+    request: Request,
+    name: str,
+    request_body: EmblemUpdate,
+    user: User = Depends(get_current_user),
 ):
     validate_emblem_yaml(request_body.yaml_content)
 
@@ -377,7 +430,9 @@ async def update_emblem(
 
 @router.delete("/{name}")
 @limiter.limit(AUTH_LIMIT)
-async def delete_emblem(request: Request, name: str, user: User = Depends(get_current_user)):
+async def delete_emblem(
+    request: Request, name: str, user: User = Depends(get_current_user)
+):
     try:
         supabase = get_supabase()
         emblem_response = (

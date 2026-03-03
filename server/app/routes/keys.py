@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import secrets
 import hashlib
 from app.database import get_supabase
+from app.limiter import limiter, PUBLIC_LIMIT, AUTH_LIMIT
 from app.routes.auth import get_current_user
 from app.models import User
 
@@ -40,7 +41,8 @@ def hash_key(key: str) -> str:
 
 
 @router.get("", response_model=List[KeyListItem])
-async def list_keys(user: User = Depends(get_current_user)):
+@limiter.limit(PUBLIC_LIMIT)
+async def list_keys(request: Request, user: User = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         response = (
@@ -73,13 +75,14 @@ async def list_keys(user: User = Depends(get_current_user)):
 
 
 @router.post("", response_model=KeyResponse, status_code=201)
-async def create_key(request: KeyCreate, user: User = Depends(get_current_user)):
+@limiter.limit(AUTH_LIMIT)
+async def create_key(request: Request, request_body: KeyCreate, user: User = Depends(get_current_user)):
     supabase = get_supabase()
     existing = (
         supabase.table("api_keys")
         .select("id")
         .eq("user_id", user.id)
-        .eq("name", request.name)
+        .eq("name", request_body.name)
         .execute()
     )
 
@@ -92,9 +95,9 @@ async def create_key(request: KeyCreate, user: User = Depends(get_current_user))
     key_hash = hash_key(raw_key)
 
     expires_at = None
-    if request.expires_days:
+    if request_body.expires_days:
         expires_at = (
-            datetime.utcnow() + timedelta(days=request.expires_days)
+            datetime.utcnow() + timedelta(days=request_body.expires_days)
         ).isoformat() + "Z"
 
     try:
@@ -103,7 +106,7 @@ async def create_key(request: KeyCreate, user: User = Depends(get_current_user))
             .insert(
                 {
                     "user_id": user.id,
-                    "name": request.name,
+                    "name": request_body.name,
                     "key_hash": key_hash,
                     "expires_at": expires_at,
                 }
@@ -119,7 +122,7 @@ async def create_key(request: KeyCreate, user: User = Depends(get_current_user))
 
         return KeyResponse(
             id=row["id"],
-            name=request.name,
+            name=request_body.name,
             key=raw_key,
             created_at=created_at,
             expires_at=datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
@@ -131,7 +134,8 @@ async def create_key(request: KeyCreate, user: User = Depends(get_current_user))
 
 
 @router.get("/{key_id}", response_model=KeyListItem)
-async def get_key(key_id: str, user: User = Depends(get_current_user)):
+@limiter.limit(PUBLIC_LIMIT)
+async def get_key(request: Request, key_id: str, user: User = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         response = (
@@ -162,7 +166,8 @@ async def get_key(key_id: str, user: User = Depends(get_current_user)):
 
 
 @router.delete("/{key_id}", status_code=204)
-async def delete_key(key_id: str, user: User = Depends(get_current_user)):
+@limiter.limit(AUTH_LIMIT)
+async def delete_key(request: Request, key_id: str, user: User = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         response = (

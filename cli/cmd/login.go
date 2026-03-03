@@ -3,10 +3,15 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -284,4 +289,109 @@ func saveTokenAndSuccess(authResp *authResponse) error {
 	fmt.Println("Your credentials have been stored securely.")
 
 	return nil
+}
+
+// tokenResponse holds the OAuth token data received via callback.
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	Error        string `json:"error"`
+}
+
+// generateRandomState creates a cryptographically random base64-encoded state string
+// for use as CSRF protection in OAuth flows.
+func generateRandomState() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random state: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// findAvailablePort finds an available TCP port in the range 8080–8090.
+func findAvailablePort() (int, error) {
+	for port := 8080; port <= 8090; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err == nil {
+			ln.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("no available port found in range 8080-8090")
+}
+
+// isCommandAvailable reports whether a command is available on the system PATH.
+func isCommandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// startLocalServer starts a local HTTP server on the given port to handle the
+// OAuth callback. It sends the received token to tokenChan or an error to errChan.
+func startLocalServer(port int, state string, tokenChan chan *tokenResponse, errChan chan error) *http.Server {
+	mux := http.NewServeMux()
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
+	}
+
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+
+		if errMsg := q.Get("error"); errMsg != "" {
+			errChan <- fmt.Errorf("OAuth error: %s", errMsg)
+			fmt.Fprintln(w, "Authentication failed. You can close this window.")
+			return
+		}
+
+		if q.Get("state") != state {
+			errChan <- fmt.Errorf("invalid OAuth state parameter")
+			fmt.Fprintln(w, "Authentication failed: invalid state. You can close this window.")
+			return
+		}
+
+		accessToken := q.Get("access_token")
+		if accessToken == "" {
+			errChan <- fmt.Errorf("no access token received in callback")
+			fmt.Fprintln(w, "Authentication failed: no token received. You can close this window.")
+			return
+		}
+
+		tokenChan <- &tokenResponse{
+			AccessToken:  accessToken,
+			RefreshToken: q.Get("refresh_token"),
+			TokenType:    "bearer",
+		}
+		fmt.Fprintln(w, "Authentication successful! You can close this window and return to the CLI.")
+	})
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- fmt.Errorf("callback server error: %w", err)
+		}
+	}()
+	return server
+}
+
+// openBrowser attempts to open the given URL in the system's default browser.
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	default:
+		for _, browser := range []string{"xdg-open", "google-chrome", "chromium", "firefox"} {
+			if isCommandAvailable(browser) {
+				cmd = exec.Command(browser, url)
+				break
+			}
+		}
+		if cmd == nil {
+			return fmt.Errorf("no browser command available")
+		}
+	}
+	return cmd.Start()
 }

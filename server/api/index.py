@@ -1,20 +1,8 @@
 """
-Vercel serverless function entry point - DEBUG VERSION
+Vercel serverless function entry point.
 """
 
-import json
+from mangum import Mangum
+from app.main import app
 
-
-def handler(event, context):
-    """Simple test handler for debugging Vercel deployment"""
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {
-                "status": "healthy",
-                "message": "Debug handler works!",
-                "event_type": type(event).__name__,
-            }
-        ),
-    }
+handler = Mangum(app, lifespan="off")

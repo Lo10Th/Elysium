@@ -366,7 +366,11 @@ func startLocalServer(port int, state string, tokenChan chan *tokenResponse, err
 		fmt.Fprintln(w, "Authentication successful! You can close this window and return to the CLI.")
 	})
 
-	go server.ListenAndServe() //nolint:errcheck
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- fmt.Errorf("callback server error: %w", err)
+		}
+	}()
 	return server
 }
 

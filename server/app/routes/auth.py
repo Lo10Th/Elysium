@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
 from app.database import get_supabase
-from app.limiter import limiter, PUBLIC_LIMIT, STRICT_LIMIT
+from app.limiter import limiter, PUBLIC_LIMIT, STRICT_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
 from app.models import User
 import urllib.parse
 import secrets
@@ -73,7 +73,7 @@ async def get_current_user_optional(
 
 
 @router.post("/register", response_model=AuthResponse)
-@limiter.limit("5/minute")
+@limiter.limit(REGISTER_LIMIT)
 async def register(request: Request, request_body: RegisterRequest):
     try:
         supabase = get_supabase()
@@ -136,7 +136,7 @@ async def logout(request: Request, user: User = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=AuthResponse)
-@limiter.limit("20/minute")
+@limiter.limit(REFRESH_LIMIT)
 async def refresh_token(request: Request, request_body: TokenRefreshRequest):
     try:
         supabase = get_supabase()

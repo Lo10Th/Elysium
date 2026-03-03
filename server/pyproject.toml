@@ -2,8 +2,6 @@
 name = "elysium-registry"
 version = "1.0.0"
 description = "Elysium Registry Server - API App Store Backend"
-authors = [{name = "Elysium", email = "support@elysium.dev"}]
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109.0",
@@ -28,10 +26,6 @@ dev = [
     "isort>=5.13.0",
     "ruff>=0.2.0",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

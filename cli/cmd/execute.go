@@ -15,9 +15,14 @@ import (
 )
 
 var (
-	paramsJSON   string
-	paramsFile   string
-	outputFormat string
+	paramsJSON      string
+	paramsFile      string
+	outputFormat    string
+	prettyOutput    bool
+	outputFields    string
+	outputTemplate  string
+	tableWidth      int
+	noColorOutput   bool
 )
 
 func isInstalledEmblem(name string) bool {
@@ -124,8 +129,27 @@ func executeEmblemAction(emblemName string, args []string) error {
 		return fmt.Errorf("failed to parse parameters: %w", err)
 	}
 
+	var fields []string
+	if outputFields != "" {
+		for _, f := range strings.Split(outputFields, ",") {
+			f = strings.TrimSpace(f)
+			if f != "" {
+				fields = append(fields, f)
+			}
+		}
+	}
+
+	opts := executor.FormatOptions{
+		Format:   executor.OutputFormat(strings.ToLower(outputFormat)),
+		Pretty:   prettyOutput,
+		Fields:   fields,
+		Template: outputTemplate,
+		NoColor:  noColorOutput,
+		Width:    tableWidth,
+	}
+
 	exec := executor.New(def)
-	result, err := exec.Execute(actionName, params, outputFormat)
+	result, err := exec.Execute(actionName, params, opts)
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			return errfmt.ConnectionError(def.BaseURL, err)
@@ -252,5 +276,9 @@ Examples:
 func init() {
 	executeCmd.Flags().StringVar(&paramsJSON, "params", "", "Parameters as JSON string")
 	executeCmd.Flags().StringVar(&paramsFile, "params-file", "", "Load parameters from JSON file")
+	executeCmd.Flags().BoolVar(&prettyOutput, "pretty", false, "Pretty-print JSON output")
+	executeCmd.Flags().StringVar(&outputFields, "fields", "", "Comma-separated list of fields to include")
+	executeCmd.Flags().StringVar(&outputTemplate, "format", "", "Output template using {field} placeholders")
+	executeCmd.Flags().IntVar(&tableWidth, "width", 0, "Maximum table width in characters")
 	rootCmd.AddCommand(executeCmd)
 }

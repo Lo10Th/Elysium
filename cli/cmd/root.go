@@ -28,7 +28,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress output")
 	rootCmd.PersistentFlags().Bool("no-color", false, "disable colored output")
-	rootCmd.PersistentFlags().StringP("output", "o", "table", "output format (table, json, plain)")
+	rootCmd.PersistentFlags().StringP("output", "o", "table", "output format (table, json, yaml, csv, plain)")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
@@ -80,10 +80,29 @@ func Execute() {
 
 					format := "table"
 					for i, arg := range actionArgs {
-						if arg == "-o" || arg == "--output" {
+						switch arg {
+						case "-o", "--output":
 							if i+1 < len(actionArgs) {
 								format = actionArgs[i+1]
 							}
+						case "--pretty":
+							prettyOutput = true
+						case "--fields":
+							if i+1 < len(actionArgs) {
+								outputFields = actionArgs[i+1]
+							}
+						case "--format":
+							if i+1 < len(actionArgs) {
+								outputTemplate = actionArgs[i+1]
+							}
+						case "--width":
+							if i+1 < len(actionArgs) {
+								if n, err := fmt.Sscanf(actionArgs[i+1], "%d", &tableWidth); n != 1 || err != nil {
+									tableWidth = 0
+								}
+							}
+						case "--no-color":
+							noColorOutput = true
 						}
 					}
 					outputFormat = format

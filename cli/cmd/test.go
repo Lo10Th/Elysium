@@ -65,7 +65,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	}
 
 	exec := executor.New(def)
-	result, err := exec.Execute(actionName, nil, "table")
+	result, err := exec.Execute(actionName, nil, executor.FormatOptions{Format: executor.FormatTable})
 	if err != nil {
 		return err
 	}

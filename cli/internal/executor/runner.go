@@ -32,7 +32,7 @@ func (e *Executor) ListActions() []string {
 	return e.definition.ListActions()
 }
 
-func (e *Executor) Execute(actionName string, params map[string]interface{}, format string) ([]byte, error) {
+func (e *Executor) Execute(actionName string, params map[string]interface{}, opts FormatOptions) ([]byte, error) {
 	action, err := e.definition.GetAction(actionName)
 	if err != nil {
 		return nil, fmt.Errorf("action not found: %w", err)
@@ -99,7 +99,7 @@ func (e *Executor) Execute(actionName string, params map[string]interface{}, for
 		return nil, errfmt.APIError(resp.StatusCode(), errMsg)
 	}
 
-	return e.formatOutput(resp.Body(), format)
+	return e.formatOutput(resp.Body(), opts)
 }
 
 func (e *Executor) buildURL(path string, params map[string]interface{}) string {
@@ -162,27 +162,8 @@ func (e *Executor) extractBodyParams(action *emblem.Action, params map[string]in
 	return body
 }
 
-func (e *Executor) formatOutput(data []byte, format string) ([]byte, error) {
-	switch strings.ToLower(format) {
-	case "json":
-		return data, nil
-	case "plain", "table":
-		var result interface{}
-		if err := json.Unmarshal(data, &result); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON: %w", err)
-		}
-
-		switch v := result.(type) {
-		case []interface{}:
-			return formatTable(v)
-		case map[string]interface{}:
-			return formatObject(v)
-		default:
-			return data, nil
-		}
-	default:
-		return data, nil
-	}
+func (e *Executor) formatOutput(data []byte, opts FormatOptions) ([]byte, error) {
+	return FormatOutput(data, opts)
 }
 
 func formatTable(items []interface{}) ([]byte, error) {

@@ -4,19 +4,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
+// CachedVersionInfo holds the cached update state for an installed emblem.
+type CachedVersionInfo struct {
+	LatestVersion     string    `yaml:"latest_version"`
+	SecurityAdvisory  string    `yaml:"security_advisory,omitempty"`
+	SecuritySeverity  string    `yaml:"security_severity,omitempty"`
+	LastChecked       time.Time `yaml:"last_checked"`
+}
+
 type Config struct {
-	Registry     string            `yaml:"registry"`
-	Token        string            `yaml:"token,omitempty"`
-	RefreshToken string            `yaml:"refresh_token,omitempty"`
-	CurrentKey   string            `yaml:"current_key,omitempty"`
-	CacheDir     string            `yaml:"cache_dir"`
-	UserEmail    string            `yaml:"user_email,omitempty"`
-	Username     string            `yaml:"username,omitempty"`
-	Installed    map[string]string `yaml:"installed"`
+	Registry          string                       `yaml:"registry"`
+	Token             string                       `yaml:"token,omitempty"`
+	RefreshToken      string                       `yaml:"refresh_token,omitempty"`
+	CurrentKey        string                       `yaml:"current_key,omitempty"`
+	CacheDir          string                       `yaml:"cache_dir"`
+	UserEmail         string                       `yaml:"user_email,omitempty"`
+	Username          string                       `yaml:"username,omitempty"`
+	Installed         map[string]string            `yaml:"installed"`
+	UpdateCache       map[string]CachedVersionInfo `yaml:"update_cache,omitempty"`
+	LastUpdateCheck   time.Time                    `yaml:"last_update_check,omitempty"`
+	DisableUpdateCheck bool                        `yaml:"disable_update_check,omitempty"`
 }
 
 var (
@@ -42,9 +54,10 @@ func Init() error {
 	}
 
 	config = &Config{
-		Registry:  getEnvOrDefault("ELYSIUM_REGISTRY", "https://ely.karlharrenga.com"),
-		CacheDir:  cacheDir,
-		Installed: make(map[string]string),
+		Registry:    getEnvOrDefault("ELYSIUM_REGISTRY", "https://ely.karlharrenga.com"),
+		CacheDir:    cacheDir,
+		Installed:   make(map[string]string),
+		UpdateCache: make(map[string]CachedVersionInfo),
 	}
 
 	configPath := filepath.Join(configDir, "config.yaml")
@@ -55,6 +68,9 @@ func Init() error {
 		}
 		if err := yaml.Unmarshal(data, config); err != nil {
 			return fmt.Errorf("failed to parse config file: %w", err)
+		}
+		if config.UpdateCache == nil {
+			config.UpdateCache = make(map[string]CachedVersionInfo)
 		}
 	}
 
@@ -190,5 +206,44 @@ func ClearAuth() error {
 	config.RefreshToken = ""
 	config.UserEmail = ""
 	config.Username = ""
+	return Save()
+}
+
+// SetVersionCache stores the latest version info for an emblem in the update cache.
+func SetVersionCache(name, latestVersion, securityAdvisory, securitySeverity string) error {
+	config.UpdateCache[name] = CachedVersionInfo{
+		LatestVersion:    latestVersion,
+		SecurityAdvisory: securityAdvisory,
+		SecuritySeverity: securitySeverity,
+		LastChecked:      time.Now(),
+	}
+	return Save()
+}
+
+// GetVersionCache retrieves the cached version info for an emblem.
+func GetVersionCache(name string) (CachedVersionInfo, bool) {
+	info, ok := config.UpdateCache[name]
+	return info, ok
+}
+
+// SetLastUpdateCheck records the timestamp of the most recent full update check.
+func SetLastUpdateCheck() error {
+	config.LastUpdateCheck = time.Now()
+	return Save()
+}
+
+// GetLastUpdateCheck returns the timestamp of the last full update check.
+func GetLastUpdateCheck() time.Time {
+	return config.LastUpdateCheck
+}
+
+// IsUpdateCheckEnabled returns whether automatic update checks are enabled.
+func IsUpdateCheckEnabled() bool {
+	return !config.DisableUpdateCheck
+}
+
+// SetUpdateCheckEnabled sets whether automatic update checks are enabled.
+func SetUpdateCheckEnabled(enabled bool) error {
+	config.DisableUpdateCheck = !enabled
 	return Save()
 }

@@ -128,7 +128,24 @@ func pullSingleEmblem(arg string, verbose bool) error {
 		return fmt.Errorf("failed to update installed list: %w", err)
 	}
 
+	// Cache the latest version info so update notifications work offline.
+	if cacheErr := config.SetVersionCache(
+		name,
+		emblemInfo.LatestVersion,
+		emblemInfo.SecurityAdvisory,
+		emblemInfo.SecuritySeverity,
+	); cacheErr != nil {
+		// Non-fatal; don't fail the pull.
+		fmt.Printf("Warning: could not cache version info for %s: %v\n", name, cacheErr)
+	}
+
 	fmt.Printf("%s:\n  ✓ Downloaded %s@%s\n", name, name, version)
+
+	// Notify if the pulled version is behind the latest.
+	if version != emblemInfo.LatestVersion {
+		fmt.Printf("  ⚠️  Update available: %s %s → %s\n", name, version, emblemInfo.LatestVersion)
+		fmt.Printf("     Run: ely update %s\n", name)
+	}
 
 	return nil
 }

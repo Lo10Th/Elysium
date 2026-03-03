@@ -60,6 +60,10 @@ func isInstalledEmblem(name string) bool {
 }
 
 func executeEmblemAction(emblemName string, args []string) error {
+	// Show update/security notification before executing, if applicable.
+	noCheck, _ := rootCmd.PersistentFlags().GetBool("no-check")
+	PrintUpdateNotification(emblemName, noCheck)
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)

@@ -17,20 +17,22 @@ type Client struct {
 }
 
 type Emblem struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	AuthorID      string   `json:"author_id,omitempty"`
-	AuthorName    string   `json:"author_name,omitempty"`
-	Category      string   `json:"category,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
-	License       string   `json:"license"`
-	RepositoryURL string   `json:"repository_url,omitempty"`
-	HomepageURL   string   `json:"homepage_url,omitempty"`
-	LatestVersion string   `json:"latest_version"`
-	Downloads     int      `json:"downloads_count"`
-	CreatedAt     string   `json:"created_at"`
-	UpdatedAt     string   `json:"updated_at"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Description       string   `json:"description"`
+	AuthorID          string   `json:"author_id,omitempty"`
+	AuthorName        string   `json:"author_name,omitempty"`
+	Category          string   `json:"category,omitempty"`
+	Tags              []string `json:"tags,omitempty"`
+	License           string   `json:"license"`
+	RepositoryURL     string   `json:"repository_url,omitempty"`
+	HomepageURL       string   `json:"homepage_url,omitempty"`
+	LatestVersion     string   `json:"latest_version"`
+	Downloads         int      `json:"downloads_count"`
+	CreatedAt         string   `json:"created_at"`
+	UpdatedAt         string   `json:"updated_at"`
+	SecurityAdvisory  string   `json:"security_advisory,omitempty"`
+	SecuritySeverity  string   `json:"security_severity,omitempty"`
 }
 
 type Key struct {

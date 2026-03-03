@@ -112,6 +112,8 @@ class Emblem(BaseModel):
     downloads_count: int = 0
     created_at: datetime
     updated_at: datetime
+    security_advisory: Optional[str] = None
+    security_severity: Optional[str] = None
 
 
 class EmblemVersion(BaseModel):

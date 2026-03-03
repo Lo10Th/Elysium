@@ -15,7 +15,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Elysium Registry",
-    version="1.0.0",
+    version="0.1.0",
     description="Registry for API emblems - discover and use APIs programmatically",
 )
 
@@ -42,7 +42,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "version": "1.0.0"}
+    return {"status": "healthy", "version": "0.1.0"}
 
 
 @app.get("/")

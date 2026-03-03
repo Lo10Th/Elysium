@@ -1,9 +1,20 @@
 from supabase import create_client, Client
-from app.config import settings
+from app.config import get_settings
 
-# Initialize Supabase client
-# Uses SUPABASE_KEY (supports both old and new naming via Settings class)
-supabase: Client = create_client(
-    settings.SUPABASE_URL,
-    settings.SUPABASE_KEY,  # This is set from either SUPABASE_KEY or SUPABASE_ANON_KEY
-)
+# Initialize Supabase client lazily
+_supabase: Optional[Client] = None
+
+
+def get_supabase() -> Client:
+    """Get Supabase client instance (lazy initialization)."""
+    global _supabase
+    if _supabase is None:
+        settings = get_settings()
+        _supabase = create_client(
+            settings.SUPABASE_URL, settings.effective_supabase_key
+        )
+    return _supabase
+
+
+# For backward compatibility
+supabase = get_supabase()

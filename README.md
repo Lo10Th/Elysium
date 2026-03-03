@@ -32,18 +32,14 @@ APIs are everywhere, but using them requires:
 ### Installation
 
 ```bash
-# One-line install (Linux/macOS)
+# One-line install (Linux/macOS) - Recommended
 curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
 
 # Or with wget
 wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
 
 # Install a specific version
-curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.1.0
-
-# Using Homebrew (macOS / Linux)
-brew tap Lo10Th/tap
-brew install ely
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.2.0
 
 # Using Go install
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest

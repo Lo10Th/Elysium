@@ -18,13 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dynamic completion for emblem names
   - Dynamic completion for action names
   - Dynamic completion for action parameters
-- **Homebrew Distribution** - `brew tap Lo10Th/tap && brew install ely`
-  - Multi-platform support (darwin-amd64, darwin-arm64, linux-amd64, linux-arm64)
-  - Automatic SHA256 checksums via release workflow
 - **Install Script** - One-line installation
   - `curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash`
   - OS/architecture auto-detection
-  - Version selection (`--version v0.1.0`)
+  - Version selection (`--version v0.2.0`)
   - Shell completion setup
 - **Uninstall Script** - Clean uninstall with `--purge` option
 - **CI Status Badges** - Test and Release workflow badges in README
@@ -34,10 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests now block PRs on failure (removed `continue-on-error`)
 
 ### Installation Methods
-1. Homebrew: `brew tap Lo10Th/tap && brew install ely`
-2. One-line: `curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash`
-3. Go install: `go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest`
-4. Manual download from GitHub Releases
+1. One-line: `curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash`
+2. Go install: `go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest`
+3. Manual download from GitHub Releases
 
 ---
 

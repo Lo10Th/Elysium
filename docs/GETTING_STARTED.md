@@ -14,20 +14,25 @@ Elysium is a registry and CLI tool for discovering and using APIs. Think of it a
 
 ## Installation
 
-### Homebrew (macOS / Linux) — Recommended
+### One-line install (Linux/macOS) — Recommended
 
 ```bash
-brew tap Lo10Th/tap
-brew install ely
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
 ```
 
-Upgrade to the latest version at any time:
+Or with wget:
 
 ```bash
-brew upgrade ely
+wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
 ```
 
-### From source (Go install)
+Install a specific version:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.2.0
+```
+
+### Using Go install
 
 ```bash
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest

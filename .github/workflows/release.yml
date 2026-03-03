@@ -70,15 +70,20 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body: |
-            ## Elysium CLI v${{ github.ref_name }}
+            ## Elysium CLI ${{ github.ref_name }}
             
             ### Installation
             
-            #### Homebrew (macOS / Linux)
+            #### One-line install (Recommended)
             
             ```bash
-            brew tap Lo10Th/tap
-            brew install ely
+            curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
+            ```
+            
+            Or with wget:
+            
+            ```bash
+            wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
             ```
             
             #### Download binary
@@ -114,29 +119,3 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  update-homebrew:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update Homebrew formula
-        run: |
-          chmod +x scripts/update-homebrew.sh
-          ./scripts/update-homebrew.sh "${{ github.ref_name }}"
-
-      - name: Commit updated formula
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/ely.rb
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update Homebrew formula to ${{ github.ref_name }}"
-            git push origin main
-          fi

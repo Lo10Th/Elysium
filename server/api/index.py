@@ -1,17 +1,15 @@
 """
 Vercel serverless function entry point.
-This file is required for Vercel to serve the FastAPI application.
 """
 
 import os
+import sys
 
-# Set default port for Vercel
-os.environ.setdefault("PORT", "8000")
+# Add the parent directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the FastAPI app
 from app.main import app
 
-# For Vercel Python runtime, we need to export the app directly
-# The runtime will detect it's a FastAPI/Starlette app and handle it as ASGI
-# Do not rename this variable - Vercel expects 'app' or 'handler'
+# Export for Vercel
 handler = app

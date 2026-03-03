@@ -64,8 +64,8 @@ class TypeDefinition(BaseModel):
 
 class EmblemYAML(BaseModel):
     apiVersion: str
-    name: constr(regex=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
-    version: constr(regex=r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$')
+    name: constr(pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
+    version: constr(pattern=r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$')
     description: constr(min_length=10, max_length=500)
     author: Optional[str] = None
     license: str = "MIT"
@@ -80,7 +80,7 @@ class EmblemYAML(BaseModel):
 
 
 class EmblemCreate(BaseModel):
-    name: constr(regex=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
+    name: constr(pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
     description: constr(min_length=10, max_length=500)
     yaml_content: str
     category: Optional[str] = None

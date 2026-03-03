@@ -1,0 +1,468 @@
+apiVersion: v1
+name: clothing-shop
+version: 1.0.0
+description: REST API for an online clothing store with product management and order processing
+author: Elysium Team
+license: MIT
+
+baseUrl: http://localhost:5000/api
+
+auth:
+  type: api_key
+  keyEnv: CLOTHING_SHOP_API_KEY
+  header: X-API-Key
+
+tags:
+  - api
+  - ecommerce
+  - shop
+  - rest
+
+category: ecommerce
+
+types:
+  Product:
+    description: A product in the store
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique product identifier
+      name:
+        type: string
+        required: true
+        description: Product name
+      description:
+        type: string
+        required: false
+        description: Product description
+      price:
+        type: number
+        required: true
+        description: Price in USD
+      size:
+        type: string
+        required: false
+        description: Product size (S, M, L, XL)
+        enum:
+          - S
+          - M
+          - L
+          - XL
+      color:
+        type: string
+        required: false
+        description: Product color
+      category:
+        type: string
+        required: false
+        description: Product category
+      stock:
+        type: integer
+        required: false
+        default: 0
+        description: Available inventory
+      image_url:
+        type: string
+        required: false
+        description: Product image URL
+      created_at:
+        type: string
+        required: false
+        description: Creation timestamp (ISO 8601)
+      updated_at:
+        type: string
+        required: false
+        description: Last update timestamp (ISO 8601)
+
+  Order:
+    description: A customer order
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique order identifier
+      customer_name:
+        type: string
+        required: true
+        description: Customer's full name
+      customer_email:
+        type: string
+        required: true
+        description: Customer's email address
+      customer_address:
+        type: string
+        required: true
+        description: Shipping address
+      total_price:
+        type: number
+        required: true
+        description: Total order price in USD
+      status:
+        type: string
+        required: true
+        description: Order status
+        enum:
+          - pending
+          - processing
+          - shipped
+          - delivered
+          - cancelled
+      items:
+        type: array
+        required: true
+        description: List of ordered items
+        items:
+          type: OrderItem
+      created_at:
+        type: string
+        required: false
+        description: Creation timestamp (ISO 8601)
+      updated_at:
+        type: string
+        required: false
+        description: Last update timestamp (ISO 8601)
+
+  OrderItem:
+    description: An item in an order
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique order item identifier
+      order_id:
+        type: integer
+        required: true
+        description: Order ID
+      product_id:
+        type: integer
+        required: true
+        description: Product ID
+      product_name:
+        type: string
+        required: false
+        description: Product name at time of order
+      quantity:
+        type: integer
+        required: true
+        description: Quantity ordered
+      price:
+        type: number
+        required: true
+        description: Price per unit at time of order
+      size:
+        type: string
+        required: false
+        description: Selected size
+      color:
+        type: string
+        required: false
+        description: Selected color
+      created_at:
+        type: string
+        required: false
+        description: Creation timestamp (ISO 8601)
+
+actions:
+  list-products:
+    description: List all products with optional filtering
+    method: GET
+    path: /products
+    parameters:
+      - name: category
+        type: string
+        in: query
+        required: false
+        description: Filter by category
+    responses:
+      200:
+        description: List of products
+        schema:
+          type: array
+          items:
+            type: Product
+
+  get-product:
+    description: Retrieve a single product by ID
+    method: GET
+    path: /products/{id}
+    parameters:
+      - name: id
+        type: integer
+        in: path
+        required: true
+        description: Product ID
+    responses:
+      200:
+        description: Product details
+        schema:
+          type: Product
+      404:
+        description: Product not found
+
+  create-product:
+    description: Create a new product
+    method: POST
+    path: /products
+    requestBody:
+      description: Product data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Product name
+          description:
+            type: string
+            required: false
+            description: Product description
+          price:
+            type: number
+            required: true
+            description: Price in USD
+          size:
+            type: string
+            required: false
+            description: Product size
+            enum:
+              - S
+              - M
+              - L
+              - XL
+          color:
+            type: string
+            required: false
+            description: Product color
+          category:
+            type: string
+            required: false
+            description: Product category
+          stock:
+            type: integer
+            required: false
+            default: 0
+            description: Initial stock quantity
+          image_url:
+            type: string
+            required: false
+            description: Product image URL
+    responses:
+      201:
+        description: Product created successfully
+        schema:
+          type: Product
+      400:
+        description: Invalid product data
+
+  update-product:
+    description: Update an existing product
+    method: PUT
+    path: /products/{id}
+    parameters:
+      - name: id
+        type: integer
+        in: path
+        required: true
+        description: Product ID
+    requestBody:
+      description: Updated product data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: false
+          description:
+            type: string
+            required: false
+          price:
+            type: number
+            required: false
+          size:
+            type: string
+            required: false
+          color:
+            type: string
+            required: false
+          category:
+            type: string
+            required: false
+          stock:
+            type: integer
+            required: false
+          image_url:
+            type: string
+            required: false
+    responses:
+      200:
+        description: Product updated successfully
+        schema:
+          type: Product
+      404:
+        description: Product not found
+
+  delete-product:
+    description: Delete a product
+    method: DELETE
+    path: /products/{id}
+    parameters:
+      - name: id
+        type: integer
+        in: path
+        required: true
+        description: Product ID
+    responses:
+      204:
+        description: Product deleted successfully
+      404:
+        description: Product not found
+
+  list-orders:
+    description: List all orders
+    method: GET
+    path: /orders
+    parameters:
+      - name: status
+        type: string
+        in: query
+        required: false
+        description: Filter by order status
+        enum:
+          - pending
+          - processing
+          - shipped
+          - delivered
+          - cancelled
+    responses:
+      200:
+        description: List of orders
+        schema:
+          type: array
+          items:
+            type: Order
+
+  get-order:
+    description: Retrieve a single order by ID
+    method: GET
+    path: /orders/{id}
+    parameters:
+      - name: id
+        type: integer
+        in: path
+        required: true
+        description: Order ID
+    responses:
+      200:
+        description: Order details
+        schema:
+          type: Order
+      404:
+        description: Order not found
+
+  create-order:
+    description: Place a new order for products
+    method: POST
+    path: /orders
+    requestBody:
+      description: Order data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          customer_name:
+            type: string
+            required: true
+            description: Customer's full name
+          customer_email:
+            type: string
+            required: true
+            description: Customer's email address
+          customer_address:
+            type: string
+            required: true
+            description: Shipping address
+          items:
+            type: array
+            required: true
+            description: List of items to order
+            items:
+              type: object
+              properties:
+                product_id:
+                  type: integer
+                  required: true
+                  description: Product ID to order
+                quantity:
+                  type: integer
+                  required: true
+                  description: Quantity to order
+                size:
+                  type: string
+                  required: false
+                  description: Selected size (overrides product default)
+                color:
+                  type: string
+                  required: false
+                  description: Selected color (overrides product default)
+    responses:
+      201:
+        description: Order created successfully
+        schema:
+          type: Order
+      400:
+        description: Invalid order data or insufficient stock
+
+  update-order-status:
+    description: Update the status of an order
+    method: PUT
+    path: /orders/{id}/status
+    parameters:
+      - name: id
+        type: integer
+        in: path
+        required: true
+        description: Order ID
+    requestBody:
+      description: Status update
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          status:
+            type: string
+            required: true
+            description: New order status
+            enum:
+              - pending
+              - processing
+              - shipped
+              - delivered
+              - cancelled
+    responses:
+      200:
+        description: Order status updated successfully
+        schema:
+          type: Order
+      404:
+        description: Order not found
+
+errors:
+  - code: 400
+    error: bad_request
+    message: Invalid request parameters
+    description: The request parameters are invalid or missing required fields
+  - code: 401
+    error: unauthorized
+    message: Authentication required
+    description: Valid API key required
+  - code: 404
+    error: not_found
+    message: Resource not found
+    description: The requested resource does not exist
+  - code: 500
+    error: internal_error
+    message: Internal server error
+    description: An unexpected error occurred on the server

@@ -1,0 +1,360 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://elysium.dev/schemas/emblem.schema.json",
+  "title": "Emblem Definition",
+  "description": "Schema for Elysium API emblem definitions",
+  "type": "object",
+  "required": ["apiVersion", "name", "version", "description", "baseUrl", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "v1",
+      "description": "The emblem specification version"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique identifier for the emblem (lowercase, alphanumeric with hyphens)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Brief description of the API and its purpose"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Author name or organization"
+    },
+    "license": {
+      "type": "string",
+      "default": "MIT",
+      "description": "License identifier (SPDX format)"
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source repository URL"
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Documentation or homepage URL"
+    },
+    "baseUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URL for all API requests"
+    },
+    "auth": {
+      "$ref": "#/definitions/auth"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "maxItems": 10,
+      "description": "Keywords for search and categorization"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "payments",
+        "storage",
+        "ai",
+        "communication",
+        "database",
+        "infrastructure",
+        "analytics",
+        "ecommerce",
+        "social",
+        "productivity",
+        "security",
+        "media",
+        "integration",
+        "other"
+      ],
+      "description": "Primary category for the API"
+    },
+    "types": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/typeDefinition"
+      },
+      "description": "Reusable type definitions for documentation"
+    },
+    "actions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/action"
+      },
+      "description": "Available API actions"
+    }
+  },
+  "definitions": {
+    "auth": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "api_key", "bearer", "basic", "oauth2"],
+          "description": "Authentication type"
+        },
+        "keyEnv": {
+          "type": "string",
+          "description": "Environment variable name containing the API key or token"
+        },
+        "header": {
+          "type": "string",
+          "description": "Header name for authentication (default: Authorization)"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Prefix for the header value (e.g., 'Bearer ', 'Token ')"
+        }
+      }
+    },
+    "typeDefinition": {
+      "type": "object",
+      "required": ["properties"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Description of this type"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/property"
+          }
+        }
+      }
+    },
+    "property": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "number", "boolean", "array", "object"],
+          "description": "Data type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Property description"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this property is required"
+        },
+        "default": {
+          "description": "Default value"
+        },
+        "items": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/property"
+            },
+            {
+              "type": "string",
+              "description": "Reference to a type definition (e.g., '#/types/ProductName')"
+            }
+          ]
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/property"
+          }
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["description", "method", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 200,
+          "description": "Brief description of what this action does"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "description": "HTTP method"
+        },
+        "path": {
+          "type": "string",
+          "description": "URL path (can contain {path_parameters})"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/parameter"
+          },
+          "description": "Input parameters for this action"
+        },
+        "requestBody": {
+          "$ref": "#/definitions/requestBody"
+        },
+        "responses": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/response"
+          },
+          "description": "Response definitions by status code"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/errorDefinition"
+          },
+          "description": "Known error conditions"
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "required": ["name", "type", "in"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "number", "boolean", "array", "object"],
+          "description": "Parameter data type"
+        },
+        "in": {
+          "type": "string",
+          "enum": ["query", "path", "header", "body"],
+          "description": "Where the parameter is passed"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this parameter is required"
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description"
+        },
+        "default": {
+          "description": "Default value if not provided"
+        },
+        "items": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/property"
+            },
+            {
+              "type": "string",
+              "description": "Reference to a type definition"
+            }
+          ]
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/property"
+          }
+        },
+        "enum": {
+          "type": "array",
+          "items": {},
+          "description": "Allowed values for this parameter"
+        }
+      }
+    },
+    "requestBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "default": "application/json"
+        },
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/property"
+            },
+            {
+              "type": "string",
+              "description": "Reference to a type definition"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Response description"
+        },
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/property"
+            },
+            {
+              "type": "string",
+              "description": "Reference to a type definition"
+            }
+          ]
+        }
+      }
+    },
+    "errorDefinition": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "integer",
+          "description": "HTTP status code"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error type identifier"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed error description"
+        }
+      }
+    }
+  }
+}

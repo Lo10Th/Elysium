@@ -29,6 +29,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress output")
 	rootCmd.PersistentFlags().Bool("no-color", false, "disable colored output")
 	rootCmd.PersistentFlags().StringP("output", "o", "table", "output format (table, json, yaml, csv, plain)")
+	rootCmd.PersistentFlags().Bool("no-check", false, "disable update notifications")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
@@ -125,7 +126,7 @@ func Execute() {
 
 func isKnownCommand(cmd string) bool {
 	commands := []string{
-		"execute", "help", "completion", "init", "info", "keys", "list", "login", "logout", "outdated", "pull", "search", "test", "update", "validate", "whoami",
+		"check-updates", "execute", "help", "completion", "init", "info", "keys", "list", "login", "logout", "outdated", "pull", "search", "test", "update", "validate", "whoami",
 	}
 	for _, c := range commands {
 		if c == cmd {

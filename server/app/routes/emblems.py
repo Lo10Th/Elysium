@@ -94,8 +94,8 @@ async def list_emblems(
 @limiter.limit(PUBLIC_LIMIT)
 async def search_emblems(
     request: Request,
-    q: str,
-    category: Optional[str] = Query(None),
+    q: str = Query(..., max_length=200),
+    category: Optional[str] = Query(None, max_length=100),
     sort: str = Query("downloads"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -104,7 +104,9 @@ async def search_emblems(
         supabase = get_supabase()
         query = supabase.table("emblems").select("*, profiles(username)")
 
-        query = query.or_(f"name.ilike.%{q}%,description.ilike.%{q}%")
+        # Escape LIKE metacharacters to prevent pattern injection
+        safe_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.or_(f"name.ilike.%{safe_q}%,description.ilike.%{safe_q}%")
 
         if category:
             query = query.eq("category", category)

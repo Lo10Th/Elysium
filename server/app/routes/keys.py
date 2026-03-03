@@ -7,14 +7,9 @@ import hashlib
 from app.database import get_supabase
 from app.limiter import limiter, PUBLIC_LIMIT, AUTH_LIMIT
 from app.routes.auth import get_current_user
-from app.models import User
+from app.models import User, KeyCreate
 
 router = APIRouter()
-
-
-class KeyCreate(BaseModel):
-    name: str
-    expires_days: Optional[int] = None
 
 
 class KeyResponse(BaseModel):

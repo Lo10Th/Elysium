@@ -1,21 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from app.database import get_supabase
 from app.limiter import limiter, PUBLIC_LIMIT, STRICT_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
 from app.models import User
 import urllib.parse
 import secrets
+import re
 
 router = APIRouter()
 security = HTTPBearer()
 
 oauth_states: dict[str, str] = {}
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
+
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -23,6 +26,22 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     username: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("password must be at least 8 characters")
+        return v
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str) -> str:
+        if not _USERNAME_RE.match(v):
+            raise ValueError(
+                "username must be 3-30 characters and contain only letters, digits, underscores, or hyphens"
+            )
+        return v
 
 
 class TokenRefreshRequest(BaseModel):
@@ -97,6 +116,8 @@ async def register(request: Request, request_body: RegisterRequest):
                 username=request_body.username,
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -120,6 +141,8 @@ async def login(request: Request, request_body: LoginRequest):
                 id=response.user.id, email=response.user.email or "", username=None
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -154,6 +177,8 @@ async def refresh_token(request: Request, request_body: TokenRefreshRequest):
                 username=None,
             ),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 

@@ -12,6 +12,8 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+const maxResponseBytes = 10 * 1024 * 1024 // 10 MB
+
 type Executor struct {
 	definition *emblem.Definition
 	client     *resty.Client
@@ -43,7 +45,14 @@ func (e *Executor) Execute(actionName string, params map[string]interface{}, opt
 		return nil, fmt.Errorf("authentication error: %w", err)
 	}
 
-	url := e.buildURL(action.Path, params)
+	targetURL := e.buildURL(action.Path, params)
+
+	// Enforce http/https scheme to prevent SSRF via other protocols
+	parsed, parseErr := url.Parse(targetURL)
+	if parseErr != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return nil, fmt.Errorf("invalid URL scheme: only http and https are allowed")
+	}
+
 	req := e.client.R()
 
 	e.setHeaders(req, creds)
@@ -59,15 +68,15 @@ func (e *Executor) Execute(actionName string, params map[string]interface{}, opt
 	var resp *resty.Response
 	switch strings.ToUpper(action.Method) {
 	case "GET":
-		resp, err = req.Get(url)
+		resp, err = req.Get(targetURL)
 	case "POST":
-		resp, err = req.Post(url)
+		resp, err = req.Post(targetURL)
 	case "PUT":
-		resp, err = req.Put(url)
+		resp, err = req.Put(targetURL)
 	case "DELETE":
-		resp, err = req.Delete(url)
+		resp, err = req.Delete(targetURL)
 	case "PATCH":
-		resp, err = req.Patch(url)
+		resp, err = req.Patch(targetURL)
 	default:
 		return nil, fmt.Errorf("unsupported HTTP method: %s", action.Method)
 	}
@@ -99,7 +108,12 @@ func (e *Executor) Execute(actionName string, params map[string]interface{}, opt
 		return nil, errfmt.APIError(resp.StatusCode(), errMsg)
 	}
 
-	return e.formatOutput(resp.Body(), opts)
+	body := resp.Body()
+	if int64(len(body)) > maxResponseBytes {
+		return nil, fmt.Errorf("response too large: %d bytes (limit %d bytes)", len(body), maxResponseBytes)
+	}
+
+	return e.formatOutput(body, opts)
 }
 
 func (e *Executor) buildURL(path string, params map[string]interface{}) string {
@@ -107,7 +121,8 @@ func (e *Executor) buildURL(path string, params map[string]interface{}) string {
 	for key, value := range params {
 		placeholder := "{" + key + "}"
 		if strings.Contains(result, placeholder) {
-			result = strings.ReplaceAll(result, placeholder, fmt.Sprintf("%v", value))
+			encoded := url.PathEscape(fmt.Sprintf("%v", value))
+			result = strings.ReplaceAll(result, placeholder, encoded)
 		}
 	}
 	return e.definition.BaseURL + result

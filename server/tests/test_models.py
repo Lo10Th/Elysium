@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 from app.models import (
-    EmblemCreate, EmblemResponse, EmblemVersion,
+    EmblemCreate, Emblem, EmblemVersion,
     KeyCreate, KeyResponse, UserCreate, UserLogin
 )
 
@@ -45,6 +45,7 @@ class TestEmblemModels:
 
     def test_emblem_response(self):
         """Test emblem response model."""
+        from app.models import Emblem
         data = {
             "id": "emblem-123",
             "name": "test-api",
@@ -53,7 +54,7 @@ class TestEmblemModels:
             "latest_version": "1.0.0",
             "downloads_count": 100
         }
-        response = EmblemResponse(**data)
+        response = Emblem(**data)
         assert response.id == "emblem-123"
         assert response.name == "test-api"
 

@@ -39,7 +39,7 @@ func Init() error {
 	}
 
 	config = &Config{
-		Registry:  getEnvOrDefault("ELYSIUM_REGISTRY", "https://registry.elysium.dev"),
+		Registry:  getEnvOrDefault("ELYSIUM_REGISTRY", "https://ely.karlharrenga.com"),
 		CacheDir:  cacheDir,
 		Installed: make(map[string]string),
 	}

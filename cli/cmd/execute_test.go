@@ -29,7 +29,7 @@ actions:
 		defer os.RemoveAll(filepath.Join(home, ".elysium", "cache", "test-emblem@1.0.0"))
 
 		configPath := filepath.Join(home, ".elysium", "config.yaml")
-		configContent := `registry: https://registry.elysium.dev
+		configContent := `registry: https://ely.karlharrenga.com
 cache_dir: ~/.elysium/cache
 installed:
   test-emblem: 1.0.0
@@ -46,7 +46,7 @@ installed:
 	t.Run("emblem not installed", func(t *testing.T) {
 		home, _ := os.UserHomeDir()
 		configPath := filepath.Join(home, ".elysium", "config.yaml")
-		configContent := `registry: https://registry.elysium.dev
+		configContent := `registry: https://ely.karlharrenga.com
 cache_dir: ~/.elysium/cache
 installed:
   test-emblem: 1.0.0

@@ -192,7 +192,7 @@ Elysium stores configuration in `~/.elysium/config.json`:
 
 ```json
 {
-  "registry": "https://registry.elysium.dev",
+  "registry": "https://ely.karlharrenga.com",
   "token": "eyJhbGciOiJIUzI1NiIs...",
   "cache_dir": "/home/user/.elysium/cache",
   "installed": {

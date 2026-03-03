@@ -41,7 +41,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	registry := viper.GetString("registry")
 	if registry == "" {
-		registry = "https://registry.elysium.dev"
+		registry = "https://ely.karlharrenga.com"
 	}
 
 	state, err := generateRandomState()

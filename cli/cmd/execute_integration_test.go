@@ -98,7 +98,7 @@ actions:
 	t.Setenv("TEST_SHOP_API_KEY", "test-api-key")
 
 	configPath := filepath.Join(home, ".elysium", "config.yaml")
-	configContent := `registry: https://registry.elysium.dev
+	configContent := `registry: https://ely.karlharrenga.com
 cache_dir: ~/.elysium/cache
 installed:
   test-shop: 1.0.0

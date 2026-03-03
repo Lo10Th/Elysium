@@ -26,7 +26,7 @@ var whoamiCmd = &cobra.Command{
 
 		registry := viper.GetString("registry")
 		if registry == "" {
-			registry = "https://registry.elysium.dev"
+			registry = "https://ely.karlharrenga.com"
 		}
 
 		fmt.Printf("Logged in via: %s\n", registry)

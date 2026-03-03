@@ -46,7 +46,7 @@ Examples:
   # Disable update notifications globally
   ely check-updates --no-check`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		noCheck, _ := cmd.Flags().GetBool("no-check")
+		noCheck, _ := rootCmd.PersistentFlags().GetBool("no-check")
 		if noCheck {
 			fmt.Println("Update checks are disabled (--no-check).")
 			return nil
@@ -104,7 +104,9 @@ Examples:
 		}
 
 		// Record the time of this check.
-		_ = config.SetLastUpdateCheck()
+		if err := config.SetLastUpdateCheck(); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not record last update check time: %v\n", err)
+		}
 
 		for _, e := range errors {
 			fmt.Printf("Warning: %s\n", e)
@@ -195,6 +197,5 @@ func PrintUpdateNotification(emblemName string, noCheck bool) {
 }
 
 func init() {
-	checkUpdatesCmd.Flags().Bool("no-check", false, "disable update check")
 	rootCmd.AddCommand(checkUpdatesCmd)
 }

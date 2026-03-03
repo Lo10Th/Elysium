@@ -1,5 +1,6 @@
 -- Elysium Registry Database Schema
--- Run this in your Supabase SQL Editor
+-- Compatible with Supabase API v2+
+-- Run this in your Supabase SQL Editor (Dashboard > SQL Editor)
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";

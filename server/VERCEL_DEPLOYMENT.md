@@ -23,10 +23,16 @@ This guide walks you through deploying the Elysium Registry server to Vercel wit
 ### 1.2 Get Your Credentials
 
 1. In your Supabase project dashboard, go to **Settings** > **API**
-2. Copy the following values:
+2. Under **Project API keys**, you'll see:
    - **Project URL** → This is your `SUPABASE_URL`
-   - **anon public** → This is your `SUPABASE_ANON_KEY`
-   - **service_role** → This is your `SUPABASE_SERVICE_KEY` (⚠️ Keep secret!)
+   - **anon public** → This is your `SUPABASE_KEY` (safe for client-side)
+   - **service_role** → This is your `SUPABASE_SERVICE_ROLE_KEY` (⚠️ Keep secret!)
+
+**Important Naming Note:**
+- Supabase updated their API key naming convention
+- `SUPABASE_KEY` = the anon/public key (formerly called `SUPABASE_ANON_KEY`)
+- `SUPABASE_SERVICE_ROLE_KEY` = the service role key (formerly called `SUPABASE_SERVICE_KEY`)
+- Both naming conventions work, but this guide uses the new names
 
 ### 1.3 Run Database Migrations
 
@@ -78,20 +84,18 @@ git push origin main
 In Vercel project settings:
 
 1. Go to **Settings** → **Environment Variables**
-2. Add the following:
+2. Add the following (use new Supabase naming):
 
    | Name | Value | Environment |
    |------|-------|-------------|
    | `SUPABASE_URL` | `https://xxx.supabase.co` | Production, Preview, Development |
-   | `SUPABASE_ANON_KEY` | `your-anon-key` | Production, Preview, Development |
-   | `SUPABASE_SERVICE_KEY` | `your-service-role-key` | Production, Preview, Development |
+   | `SUPABASE_KEY` | `your-anon-key` | Production, Preview, Development |
+   | `SUPABASE_SERVICE_ROLE_KEY` | `your-service-role-key` | Production, Preview, Development |
    | `CORS_ORIGINS` | `*` | Production, Preview, Development |
    
-   (Optional):
-   | `APP_NAME` | `Elysium Registry` | Production |
-   | `DEBUG` | `false` | Production |
-   | `RATE_LIMIT_REQUESTS` | `100` | Production |
-   | `RATE_LIMIT_WINDOW` | `60` | Production |
+   **Note:** These are the new Supabase API key names:
+   - `SUPABASE_KEY` (formerly `SUPABASE_ANON_KEY`)
+   - `SUPABASE_SERVICE_ROLE_KEY` (formerly `SUPABASE_SERVICE_KEY`)
 
 ### 2.4 Deploy
 

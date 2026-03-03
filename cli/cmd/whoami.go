@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	viper "github.com/spf13/viper"
-	"keyring"
+	"github.com/spf13/viper"
+	"github.com/zalando/go-keyring"
 )
 
 var whoamiCmd = &cobra.Command{

@@ -31,6 +31,19 @@ type Emblem struct {
 	UpdatedAt     string   `json:"updated_at"`
 }
 
+type Key struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Key       string     `json:"key,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+}
+
+type KeyCreateRequest struct {
+	Name        string `json:"name"`
+	ExpiresDays *int   `json:"expires_days,omitempty"`
+}
+
 type EmblemVersion struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -62,8 +75,22 @@ func NewClient() *Client {
 	}
 }
 
+func NewClientWithBaseURL(baseURL string) *Client {
+	client := resty.New()
+	client.SetTimeout(30 * time.Second)
+
+	return &Client{
+		client:  client,
+		baseURL: baseURL,
+	}
+}
+
 func (c *Client) SetToken(token string) {
 	c.client.SetAuthToken(token)
+}
+
+func (c *Client) SetBaseURL(baseURL string) {
+	c.baseURL = baseURL
 }
 
 func (c *Client) ListEmblems(category string, limit, offset int) ([]Emblem, error) {
@@ -199,4 +226,92 @@ func (c *Client) PublishEmblem(name, description, yamlContent, version string, c
 	}
 
 	return &emblem, nil
+}
+
+func (c *Client) ListKeys() ([]Key, error) {
+	resp, err := c.client.R().Get(c.baseURL + "/api/keys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list keys: %w", err)
+	}
+
+	if resp.IsError() {
+		var errResp ErrorResponse
+		json.Unmarshal(resp.Body(), &errResp)
+		return nil, fmt.Errorf("API error: %s", errResp.Error)
+	}
+
+	var keys []Key
+	if err := json.Unmarshal(resp.Body(), &keys); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return keys, nil
+}
+
+func (c *Client) CreateKey(name string, expiresAt *time.Time) (*Key, error) {
+	body := map[string]interface{}{
+		"name": name,
+	}
+
+	if expiresAt != nil {
+		expiresDays := int(time.Until(*expiresAt).Hours() / 24)
+		if expiresDays > 0 {
+			body["expires_days"] = expiresDays
+		}
+	}
+
+	resp, err := c.client.R().
+		SetBody(body).
+		Post(c.baseURL + "/api/keys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key: %w", err)
+	}
+
+	if resp.IsError() {
+		var errResp ErrorResponse
+		json.Unmarshal(resp.Body(), &errResp)
+		return nil, fmt.Errorf("API error: %s", errResp.Error)
+	}
+
+	var key Key
+	if err := json.Unmarshal(resp.Body(), &key); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &key, nil
+}
+
+func (c *Client) GetKey(id string) (*Key, error) {
+	resp, err := c.client.R().Get(c.baseURL + "/api/keys/" + id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	if resp.IsError() {
+		var errResp ErrorResponse
+		json.Unmarshal(resp.Body(), &errResp)
+		return nil, fmt.Errorf("API error: %s", errResp.Error)
+	}
+
+	var key Key
+	if err := json.Unmarshal(resp.Body(), &key); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &key, nil
+}
+
+func (c *Client) DeleteKey(id string) error {
+	resp, err := c.client.R().Delete(c.baseURL + "/api/keys/" + id)
+	if err != nil {
+		return fmt.Errorf("failed to delete key: %w", err)
+	}
+
+	if resp.IsError() {
+		var errResp ErrorResponse
+		json.Unmarshal(resp.Body(), &errResp)
+		return fmt.Errorf("API error: %s", errResp.Error)
+	}
+
+	return nil
 }

@@ -5,15 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Registry  string            `yaml:"registry"`
-	Token     string            `yaml:"token,omitempty"`
-	CacheDir  string            `yaml:"cache_dir"`
-	Installed map[string]string `yaml:"installed"`
+	Registry   string            `yaml:"registry"`
+	Token      string            `yaml:"token,omitempty"`
+	CurrentKey string            `yaml:"current_key,omitempty"`
+	CacheDir   string            `yaml:"cache_dir"`
+	Installed  map[string]string `yaml:"installed"`
 }
 
 var (
@@ -119,4 +119,13 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func GetCurrentKey() string {
+	return config.CurrentKey
+}
+
+func SetCurrentKey(keyID string) error {
+	config.CurrentKey = keyID
+	return Save()
 }

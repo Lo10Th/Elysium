@@ -4,7 +4,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
-from app.routes import auth, emblems
+from app.routes import auth, emblems, keys
 import logging
 
 logging.basicConfig(
@@ -57,6 +57,7 @@ async def root():
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(emblems.router, prefix="/api/emblems", tags=["Emblems"])
+app.include_router(keys.router, prefix="/api/keys", tags=["API Keys"])
 
 
 if __name__ == "__main__":

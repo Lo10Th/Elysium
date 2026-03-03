@@ -3,10 +3,7 @@ package executor
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 

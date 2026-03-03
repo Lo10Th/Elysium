@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
 from app.database import supabase
 from app.models import User
+import urllib.parse
+import secrets
 
 router = APIRouter()
 security = HTTPBearer()
+
+oauth_states: dict[str, str] = {}
 
 
 class LoginRequest(BaseModel):
@@ -28,6 +33,10 @@ class AuthResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: User
+
+
+class OAuthStartRequest(BaseModel):
+    redirect_uri: str
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
@@ -150,3 +159,49 @@ async def refresh_token(request: TokenRefreshRequest):
 @router.get("/me", response_model=User)
 async def get_me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.get("/oauth/start")
+async def oauth_start(redirect_uri: str, request: Request):
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = redirect_uri
+    
+    base_url = "https://supabase.example.com/auth/v1/authorize"
+    callback_url = f"{request.url.scheme}://{request.url.netloc}/api/auth/oauth/callback?state={state}"
+    params = {
+        "provider": "github",
+        "redirect_to": callback_url,
+    }
+    
+    auth_url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return RedirectResponse(url=auth_url)
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(state: str, code: str = "", error: str = ""):
+    if error:
+        redirect_uri = oauth_states.pop(state, "http://localhost:8080/callback")
+        error_params = urllib.parse.urlencode({"error": error})
+        return RedirectResponse(url=f"{redirect_uri}?{error_params}")
+    
+    if state not in oauth_states:
+        raise HTTPException(status_code=400, detail="Invalid or expired state")
+    
+    redirect_uri = oauth_states.pop(state)
+    
+    try:
+        response = supabase.auth.exchange_code_for_session(code)
+        
+        if not response.session:
+            raise HTTPException(status_code=401, detail="Authentication failed")
+        
+        token_params = urllib.parse.urlencode({
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+            "token_type": "bearer",
+        })
+        
+        return RedirectResponse(url=f"{redirect_uri}?{token_params}")
+    except Exception as e:
+        error_params = urllib.parse.urlencode({"error": str(e)})
+        return RedirectResponse(url=f"{redirect_uri}?{error_params}")

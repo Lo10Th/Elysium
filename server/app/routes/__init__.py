@@ -1,1 +1,1 @@
-from app import auth, emblems, search
+from . import auth, emblems, search, keys

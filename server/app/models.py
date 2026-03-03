@@ -140,3 +140,23 @@ class SearchQuery(BaseModel):
     sort: Optional[str] = "downloads"
     limit: int = 20
     offset: int = 0
+
+
+class KeyCreate(BaseModel):
+    name: str
+    expires_days: Optional[int] = None
+
+
+class KeyResponse(BaseModel):
+    id: str
+    name: str
+    key: Optional[str] = None
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+
+
+class KeyListItem(BaseModel):
+    id: str
+    name: str
+    created_at: datetime
+    expires_at: Optional[datetime] = None

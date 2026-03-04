@@ -258,6 +258,37 @@ ely test ./
 
 > **Note**: The `ely publish` command is not yet implemented. For now, emblems can be added to the registry by submitting them via the API or creating a pull request.
 
+## Running Tests
+
+### Unit Tests
+
+```bash
+cd cli
+go test ./...
+```
+
+### Integration Tests
+
+Integration tests exercise the full emblem execution flow against local mock
+HTTP servers. They are kept behind the `integration` build tag so they do not
+run during ordinary `go test ./...` passes.
+
+```bash
+cd cli
+go test -v -tags=integration ./test/
+```
+
+The tests cover three scenarios:
+
+| Scenario | Tests |
+|----------|-------|
+| **Happy path** | `TestFullEmblemFlow*` — cache write → load → execute |
+| **Error handling** | `TestErrorHandling_*` — missing emblem, bad YAML, API errors, connection failure |
+| **Auth integration** | `TestAuthIntegration_*` — missing/wrong/correct key, no-auth emblem |
+
+No external services or credentials are required; all HTTP calls are made to
+`net/http/httptest` servers that spin up and tear down within each test.
+
 ## Troubleshooting
 
 ### "API key required" error

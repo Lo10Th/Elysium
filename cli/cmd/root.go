@@ -126,7 +126,7 @@ func Execute() {
 
 func isKnownCommand(cmd string) bool {
 	commands := []string{
-		"check-updates", "execute", "help", "completion", "init", "info", "keys", "list", "login", "logout", "outdated", "pull", "search", "test", "update", "validate", "whoami",
+		"check-updates", "execute", "help", "completion", "init", "info", "keys", "list", "login", "logout", "outdated", "pull", "search", "self-update", "test", "update", "validate", "whoami",
 	}
 	for _, c := range commands {
 		if c == cmd {

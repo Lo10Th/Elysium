@@ -466,6 +466,21 @@ func TestIsValidURL(t *testing.T) {
 	}
 }
 
+func BenchmarkValidate(b *testing.B) {
+	v := New()
+	def := &emblem.Definition{
+		Name:    "test-api",
+		Version: "1.0.0",
+		BaseURL: "https://api.example.com",
+		Actions: map[string]emblem.Action{
+			"get": {Method: "GET", Path: "/", Description: "Test"},
+		},
+	}
+	for i := 0; i < b.N; i++ {
+		v.Validate(def)
+	}
+}
+
 func TestIsValidHTTPMethod(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -97,6 +97,19 @@ func (c *Client) SetBaseURL(baseURL string) {
 	c.baseURL = baseURL
 }
 
+// handleAPIError parses the error response body and returns an appropriate
+// error using errfmt helpers. It should be called whenever resp.IsError() is
+// true so that the JSON-unmarshal + errfmt call is not repeated across every
+// method.
+func (c *Client) handleAPIError(resp *resty.Response) error {
+	var errResp ErrorResponse
+	if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
+		// If the response body is not valid JSON, fall back to a status-code-only error.
+		return errfmt.APIError(resp.StatusCode(), "")
+	}
+	return errfmt.APIError(resp.StatusCode(), errResp.Error)
+}
+
 func (c *Client) ListEmblems(category string, limit, offset int) ([]Emblem, error) {
 	req := c.client.R().
 		SetQueryParams(map[string]string{
@@ -122,9 +135,7 @@ func (c *Client) ListEmblems(category string, limit, offset int) ([]Emblem, erro
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var emblems []Emblem
@@ -159,9 +170,7 @@ func (c *Client) SearchEmblems(query, category, sort string, limit, offset int) 
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var emblems []Emblem
@@ -182,12 +191,10 @@ func (c *Client) GetEmblem(name string) (*Emblem, error) {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
 		if resp.StatusCode() == 404 {
 			return nil, errfmt.EmblemNotFoundError(name)
 		}
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var emblem Emblem
@@ -208,13 +215,11 @@ func (c *Client) GetEmblemVersion(name, version string) (*EmblemVersion, error) 
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
 		if resp.StatusCode() == 404 {
 			return nil, errfmt.NewDetailedError(fmt.Errorf("version '%s' not found for emblem '%s'", version, name)).
 				WithSuggestion(fmt.Sprintf("Try: ely pull %s (to get latest version)", name))
 		}
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var ver EmblemVersion
@@ -246,9 +251,7 @@ func (c *Client) PublishEmblem(name, description, yamlContent, version string, c
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var emblem Emblem
@@ -269,12 +272,7 @@ func (c *Client) ListKeys() ([]Key, error) {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		if resp.StatusCode() == 401 {
-			return nil, errfmt.AuthRequiredError("API_KEY")
-		}
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var keys []Key
@@ -308,12 +306,7 @@ func (c *Client) CreateKey(name string, expiresAt *time.Time) (*Key, error) {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		if resp.StatusCode() == 401 {
-			return nil, errfmt.AuthRequiredError("API_KEY")
-		}
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var key Key
@@ -334,12 +327,7 @@ func (c *Client) GetKey(id string) (*Key, error) {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		if resp.StatusCode() == 401 {
-			return nil, errfmt.AuthRequiredError("API_KEY")
-		}
-		return nil, errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return nil, c.handleAPIError(resp)
 	}
 
 	var key Key
@@ -360,12 +348,7 @@ func (c *Client) DeleteKey(id string) error {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		json.Unmarshal(resp.Body(), &errResp)
-		if resp.StatusCode() == 401 {
-			return errfmt.AuthRequiredError("API_KEY")
-		}
-		return errfmt.APIError(resp.StatusCode(), errResp.Error)
+		return c.handleAPIError(resp)
 	}
 
 	return nil

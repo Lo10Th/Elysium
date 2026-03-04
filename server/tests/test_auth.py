@@ -93,9 +93,13 @@ class TestAuthRoutes:
 
         assert response.status_code in [401, 400]
 
-    def test_logout_success(self, client, mock_supabase):
+    def test_logout_success(self, client, mock_supabase, mock_profile):
         """Test successful logout."""
         mock_supabase.auth.sign_out.return_value = None
+
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
+        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = profile_response
 
         response = client.post(
             "/api/auth/logout", headers={"Authorization": "Bearer test-token"}
@@ -103,17 +107,13 @@ class TestAuthRoutes:
 
         assert response.status_code in [200, 204]
 
-    def test_get_current_user_success(self, client, mock_supabase, mock_auth_user):
+    def test_get_current_user_success(
+        self, client, mock_supabase, mock_auth_user, mock_profile
+    ):
         """Test getting current authenticated user."""
-        # Mock Supabase get_user
-        mock_response = MagicMock()
-        mock_response.user = mock_auth_user
-        mock_supabase.auth.get_user.return_value = mock_response
-
-        # Mock profile query - table() already returns chainable query from conftest
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data={"username": "testuser"}
-        )
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
+        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = profile_response
 
         response = client.get(
             "/api/auth/me", headers={"Authorization": "Bearer test-token"}

@@ -1,4 +1,5 @@
 """Tests for emblem routes."""
+
 import pytest
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
@@ -24,14 +25,18 @@ class TestEmblemRoutes:
         # Mock Supabase query
         mock_response = MagicMock()
         mock_response.data = [mock_emblem, mock_emblem]
-        mock_supabase.table.return_value.select.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.execute.return_value = (
+            mock_response
+        )
 
         response = client.get("/api/emblems")
 
         assert response.status_code == 200
         # Should return list of emblems
 
-    def test_list_emblems_with_category_filter(self, client, mock_supabase, mock_emblem):
+    def test_list_emblems_with_category_filter(
+        self, client, mock_supabase, mock_emblem
+    ):
         """Test listing emblems filtered by category."""
         mock_response = MagicMock()
         mock_response.data = [mock_emblem]
@@ -92,7 +97,7 @@ class TestEmblemRoutes:
 
         mock_supabase.table.return_value.execute.side_effect = [
             emblem_response,  # First call: get emblem ID
-            version_response  # Second call: get version
+            version_response,  # Second call: get version
         ]
 
         response = client.get("/api/emblems/test-api/1.0.0")
@@ -101,14 +106,12 @@ class TestEmblemRoutes:
         data = response.json()
         assert data["version"] == "1.0.0"
 
-    def test_create_emblem_success(self, client, mock_supabase, mock_auth_user):
+    def test_create_emblem_success(
+        self, client, mock_supabase, mock_auth_user, mock_profile
+    ):
         """Test creating a new emblem."""
-        # Mock auth
-        mock_auth_response = MagicMock()
-        mock_auth_response.user = mock_auth_user
-        mock_supabase.auth.get_user.return_value = mock_auth_response
-
-        # Duplicate check returns empty, insert returns new emblem
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
         no_duplicate = MagicMock()
         no_duplicate.data = []
         new_emblem_row = {
@@ -122,10 +125,11 @@ class TestEmblemRoutes:
         create_response = MagicMock()
         create_response.data = [new_emblem_row]
         mock_supabase.table.return_value.execute.side_effect = [
-            no_duplicate,     # duplicate check
+            profile_response,  # profile query in get_current_user
+            no_duplicate,  # duplicate check
             create_response,  # insert emblem
-            MagicMock(),      # insert version
-            MagicMock(),      # insert pull
+            MagicMock(),  # insert version
+            MagicMock(),  # insert pull
         ]
 
         response = client.post(
@@ -135,9 +139,9 @@ class TestEmblemRoutes:
                 "version": "1.0.0",
                 "description": "New API for testing purposes",
                 "yaml_content": VALID_EMBLEM_YAML,
-                "license": "MIT"
+                "license": "MIT",
             },
-            headers={"Authorization": "Bearer test-token"}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code in [200, 201]
@@ -146,26 +150,23 @@ class TestEmblemRoutes:
         """Test creating emblem without auth."""
         response = client.post(
             "/api/emblems",
-            json={
-                "name": "new-api",
-                "version": "1.0.0",
-                "license": "MIT"
-            }
+            json={"name": "new-api", "version": "1.0.0", "license": "MIT"},
         )
 
         assert response.status_code in [401, 403]
 
-    def test_create_emblem_duplicate_name(self, client, mock_supabase, mock_auth_user):
+    def test_create_emblem_duplicate_name(
+        self, client, mock_supabase, mock_auth_user, mock_profile
+    ):
         """Test creating emblem with duplicate name."""
-        # Mock auth
-        mock_auth_response = MagicMock()
-        mock_auth_response.user = mock_auth_user
-        mock_supabase.auth.get_user.return_value = mock_auth_response
-
-        # Duplicate check returns existing emblem
-        mock_response = MagicMock()
-        mock_response.data = [{"id": "emblem-existing"}]
-        mock_supabase.table.return_value.execute.return_value = mock_response
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
+        duplicate_response = MagicMock()
+        duplicate_response.data = [{"id": "emblem-existing"}]
+        mock_supabase.table.return_value.execute.side_effect = [
+            profile_response,  # profile query in get_current_user
+            duplicate_response,  # duplicate check returns existing
+        ]
 
         response = client.post(
             "/api/emblems",
@@ -174,30 +175,29 @@ class TestEmblemRoutes:
                 "version": "1.0.0",
                 "description": "An existing API description",
                 "yaml_content": VALID_EMBLEM_YAML,
-                "license": "MIT"
+                "license": "MIT",
             },
-            headers={"Authorization": "Bearer test-token"}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code in [400, 409]
 
-    def test_update_emblem_success(self, client, mock_supabase, mock_auth_user, mock_emblem):
+    def test_update_emblem_success(
+        self, client, mock_supabase, mock_auth_user, mock_emblem, mock_profile
+    ):
         """Test updating an emblem."""
-        # Mock auth
-        mock_auth_response = MagicMock()
-        mock_auth_response.user = mock_auth_user
-        mock_supabase.auth.get_user.return_value = mock_auth_response
-
-        # Set up sequential execute calls: get emblem, version check, insert version, update emblem
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
         emblem_response = MagicMock()
         emblem_response.data = mock_emblem
         no_existing_version = MagicMock()
         no_existing_version.data = []
         mock_supabase.table.return_value.execute.side_effect = [
-            emblem_response,         # get emblem ownership check
-            no_existing_version,     # check existing version
-            MagicMock(),             # insert new version
-            MagicMock(),             # update emblem
+            profile_response,  # profile query in get_current_user
+            emblem_response,  # get emblem ownership check
+            no_existing_version,  # check existing version
+            MagicMock(),  # insert new version
+            MagicMock(),  # update emblem
         ]
 
         response = client.put(
@@ -207,29 +207,29 @@ class TestEmblemRoutes:
                 "version": "2.0.0",
                 "description": "Updated description here",
             },
-            headers={"Authorization": "Bearer test-token"}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == 200
 
-    def test_delete_emblem_success(self, client, mock_supabase, mock_auth_user, mock_emblem):
+    def test_delete_emblem_success(
+        self, client, mock_supabase, mock_auth_user, mock_emblem, mock_profile
+    ):
         """Test deleting an emblem."""
-        # Mock auth
-        mock_auth_response = MagicMock()
-        mock_auth_response.user = mock_auth_user
-        mock_supabase.auth.get_user.return_value = mock_auth_response
-
-        # Mock emblem ownership lookup then delete (use side_effect for ordered calls)
+        profile_response = MagicMock()
+        profile_response.data = mock_profile
         emblem_response = MagicMock()
         emblem_response.data = mock_emblem
+        delete_response = MagicMock()
+        delete_response.data = None
         mock_supabase.table.return_value.execute.side_effect = [
+            profile_response,  # profile query in get_current_user
             emblem_response,  # get emblem for ownership check
-            MagicMock(),      # delete operation
+            delete_response,  # delete operation
         ]
 
         response = client.delete(
-            "/api/emblems/test-api",
-            headers={"Authorization": "Bearer test-token"}
+            "/api/emblems/test-api", headers={"Authorization": "Bearer test-token"}
         )
 
         assert response.status_code in [200, 204]

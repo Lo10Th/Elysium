@@ -53,14 +53,18 @@ def mock_supabase():
     """Mock Supabase client with chainable query support."""
     mock = MagicMock()
 
-    # Set up default auth mock with valid string attributes so auth checks pass
     auth_user = MagicMock()
     auth_user.id = "user-123"
     auth_user.email = "test@example.com"
-    mock.auth.get_user.return_value.user = auth_user
+    auth_response = MagicMock()
+    auth_response.user = auth_user
+    mock.auth.get_user.return_value = auth_response
 
-    # Set up chainable query mock for table operations
     query = make_chainable_query()
+    default_response = MagicMock()
+    default_response.data = None
+    query.execute.return_value = default_response
+
     mock.table.return_value = query
 
     with (
@@ -75,6 +79,18 @@ def mock_supabase():
 def mock_auth_user(mock_supabase):
     """Mock authenticated user (uses the auth user configured in mock_supabase)."""
     return mock_supabase.auth.get_user.return_value.user
+
+
+@pytest.fixture
+def mock_profile():
+    """Mock profile data for get_current_user dependency."""
+    return {
+        "username": "testuser",
+        "bio": None,
+        "avatar_url": None,
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+    }
 
 
 @pytest.fixture

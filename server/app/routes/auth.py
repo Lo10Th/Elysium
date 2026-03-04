@@ -3,7 +3,6 @@
 All business logic lives in app.services.auth_service.AuthService.
 Routes are responsible only for:
 - Declaring FastAPI path operations and dependencies
-- Request/response model definitions (Pydantic)
 - Calling the service layer
 - Returning the service result directly
 
@@ -11,12 +10,9 @@ The ``get_current_user`` / ``get_current_user_optional`` dependency functions
 remain here because they are imported by emblems.py and keys.py.
 """
 
-import re
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, field_validator
 
 from app.config import get_settings
 from app.database import get_supabase
@@ -27,7 +23,24 @@ from app.limiter import (
     REGISTER_LIMIT,
     REFRESH_LIMIT,
 )
-from app.models import User
+from app.models import (
+    User,
+    LoginRequest,
+    RegisterRequest,
+    TokenRefreshRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    UpdateProfileRequest,
+    ProfileResponse,
+    AuthResponse,
+    OAuthStartRequest,
+    DeviceCodeResponse,
+    DeviceVerifyRequest,
+    DeviceTokenRequest,
+    DeviceTokenResponse,
+    DeviceStatusResponse,
+    DeviceAuthorizationRequest,
+)
 from app.services.auth_service import AuthService
 
 router = APIRouter()
@@ -37,141 +50,6 @@ FRONTEND_URL = get_settings().FRONTEND_URL
 
 # Module-level state dict for in-process OAuth CSRF protection.
 oauth_states: dict[str, str] = {}
-
-_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
-
-
-# ---------------------------------------------------------------------------
-# Request / response models
-# ---------------------------------------------------------------------------
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
-    username: str
-
-    @field_validator("password")
-    @classmethod
-    def password_min_length(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("password must be at least 8 characters")
-        return v
-
-    @field_validator("username")
-    @classmethod
-    def username_format(cls, v: str) -> str:
-        if not _USERNAME_RE.match(v):
-            raise ValueError(
-                "username must be 3-30 characters and contain only letters, "
-                "digits, underscores, or hyphens"
-            )
-        return v
-
-
-class TokenRefreshRequest(BaseModel):
-    refresh_token: str
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    password: str
-
-    @field_validator("password")
-    @classmethod
-    def password_min_length(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("password must be at least 8 characters")
-        return v
-
-
-class UpdateProfileRequest(BaseModel):
-    username: str | None = None
-    bio: str | None = None
-    avatar_url: str | None = None
-
-    @field_validator("username")
-    @classmethod
-    def username_format(cls, v: str | None) -> str | None:
-        if v and not _USERNAME_RE.match(v):
-            raise ValueError(
-                "username must be 3-30 characters and contain only letters, "
-                "digits, underscores, or hyphens"
-            )
-        return v
-
-    @field_validator("bio")
-    @classmethod
-    def bio_length(cls, v: str | None) -> str | None:
-        if v and len(v) > 200:
-            raise ValueError("bio must be at most 200 characters")
-        return v
-
-
-class ProfileResponse(BaseModel):
-    id: str
-    email: str
-    username: str | None
-    bio: str | None
-    avatar_url: str | None
-    created_at: str
-    updated_at: str
-
-
-class AuthResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    user: User
-
-
-class OAuthStartRequest(BaseModel):
-    redirect_uri: str
-
-
-# Device-code models (kept here so CLI integration tests can import them
-# without taking on an auth_service dependency).
-class DeviceCodeResponse(BaseModel):
-    device_code: str
-    user_code: str
-    verification_uri: str
-    expires_in: int
-    interval: int
-
-
-class DeviceVerifyRequest(BaseModel):
-    user_code: str
-
-
-class DeviceTokenRequest(BaseModel):
-    device_code: str
-
-
-class DeviceTokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    user: User
-
-
-class DeviceStatusResponse(BaseModel):
-    user_code: str
-    verified: bool
-    client_name: str
-    expires_at: str
-
-
-class DeviceAuthorizationRequest(BaseModel):
-    client_name: str = "Elysium CLI"
 
 
 # ---------------------------------------------------------------------------

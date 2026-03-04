@@ -104,7 +104,7 @@ class TestAuthModels:
 
     def test_login_request_valid(self):
         """Test valid login request."""
-        from app.routes.auth import LoginRequest
+        from app.models import LoginRequest
         data = {
             "email": "test@example.com",
             "password": "securepassword123"
@@ -114,7 +114,7 @@ class TestAuthModels:
 
     def test_register_request_valid(self):
         """Test valid registration request."""
-        from app.routes.auth import RegisterRequest
+        from app.models import RegisterRequest
         data = {
             "email": "test@example.com",
             "password": "securepassword123",

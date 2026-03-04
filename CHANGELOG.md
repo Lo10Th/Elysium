@@ -5,6 +5,34 @@ All notable changes to Elysium will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-03-04
+
+### Added
+- **Self-Update Command** - `ely self-update` updates the CLI binary in place
+  - `ely self-update --check` checks for updates without installing
+  - `ely self-update --version v1.0.0` installs a specific version
+  - `ely self-update --force` reinstalls even if already up to date
+- **Browser-Based Authentication** - Device-flow OAuth via `ely login`
+  - Displays a one-time device code and verification URL
+  - Attempts to open the browser automatically
+  - Polls for authorization with a live spinner
+- **Update & Outdated Commands** - `ely update` and `ely outdated` are now fully implemented
+  - `ely update [emblem...]` updates one or more installed emblems
+  - `ely update --all` updates every installed emblem at once
+  - `ely outdated` lists installed emblems that have newer versions available
+- **Improved Error Messages** - Actionable suggestions on common failures (emblem not found, auth required, registry unreachable)
+- **Better Performance** - Faster emblem resolution and reduced startup overhead
+
+### Changed
+- Version bumped from 0.2.x to 1.0.0 (first stable release)
+- `ely update` and `ely outdated` moved from *Planned* to *Implemented*
+- Install script default version updated to `v1.0.0`
+
+### Breaking Changes
+- None. All existing commands and emblem YAML files remain compatible.
+
+---
+
 ## [0.2.0] - 2026-03-03
 
 ### Added
@@ -93,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Lo10Th/Elysium/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/Lo10Th/Elysium/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Lo10Th/Elysium/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Lo10Th/Elysium/releases/tag/v0.1.0

@@ -21,6 +21,8 @@ security = HTTPBearer()
 
 FRONTEND_URL = get_settings().FRONTEND_URL
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
+
 
 class LoginRequest(BaseModel):
     email: EmailStr

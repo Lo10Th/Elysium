@@ -1,4 +1,5 @@
 """Tests for authentication routes."""
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from fastapi.testclient import TestClient
@@ -17,22 +18,31 @@ class TestAuthRoutes:
         mock_response.session.refresh_token = "test-refresh-token"
         mock_supabase.auth.sign_up.return_value = mock_response
 
+        # Mock username availability check (no existing user)
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data=None
+        )
+
         # Make request
         response = client.post(
             "/api/auth/register",
             json={
                 "email": "test@example.com",
                 "password": "securepassword123",
-                "username": "testuser"
-            }
+                "username": "testuser",
+            },
         )
 
         # Assert
         assert response.status_code in [200, 201]
-        # Status code depends on implementation
 
     def test_register_duplicate_email(self, client, mock_supabase):
         """Test registration with duplicate email."""
+        # Mock username availability check (no existing user)
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data=None
+        )
+
         # Mock Supabase error
         mock_supabase.auth.sign_up.side_effect = Exception("User already registered")
 
@@ -41,8 +51,8 @@ class TestAuthRoutes:
             json={
                 "email": "existing@example.com",
                 "password": "password123",
-                "username": "existinguser"
-            }
+                "username": "existinguser",
+            },
         )
 
         assert response.status_code in [400, 409]
@@ -57,12 +67,14 @@ class TestAuthRoutes:
         mock_response.session.refresh_token = "refresh-token"
         mock_supabase.auth.sign_in_with_password.return_value = mock_response
 
+        # Mock profile query
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data={"username": "testuser"}
+        )
+
         response = client.post(
             "/api/auth/login",
-            json={
-                "email": "test@example.com",
-                "password": "securepassword123"
-            }
+            json={"email": "test@example.com", "password": "securepassword123"},
         )
 
         assert response.status_code in [200, 201]
@@ -70,14 +82,13 @@ class TestAuthRoutes:
     def test_login_invalid_credentials(self, client, mock_supabase):
         """Test login with invalid credentials."""
         # Mock Supabase error
-        mock_supabase.auth.sign_in_with_password.side_effect = Exception("Invalid credentials")
+        mock_supabase.auth.sign_in_with_password.side_effect = Exception(
+            "Invalid credentials"
+        )
 
         response = client.post(
             "/api/auth/login",
-            json={
-                "email": "test@example.com",
-                "password": "wrongpassword"
-            }
+            json={"email": "test@example.com", "password": "wrongpassword"},
         )
 
         assert response.status_code in [401, 400]
@@ -87,8 +98,7 @@ class TestAuthRoutes:
         mock_supabase.auth.sign_out.return_value = None
 
         response = client.post(
-            "/api/auth/logout",
-            headers={"Authorization": "Bearer test-token"}
+            "/api/auth/logout", headers={"Authorization": "Bearer test-token"}
         )
 
         assert response.status_code in [200, 204]
@@ -100,13 +110,16 @@ class TestAuthRoutes:
         mock_response.user = mock_auth_user
         mock_supabase.auth.get_user.return_value = mock_response
 
+        # Mock profile query - table() already returns chainable query from conftest
+        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+            data={"username": "testuser"}
+        )
+
         response = client.get(
-            "/api/auth/me",
-            headers={"Authorization": "Bearer test-token"}
+            "/api/auth/me", headers={"Authorization": "Bearer test-token"}
         )
 
         assert response.status_code == 200
-        # Response should contain user data
 
     def test_get_current_user_unauthorized(self, client, mock_supabase):
         """Test getting current user without token."""
@@ -127,9 +140,13 @@ class TestAuthRoutes:
         mock_response.session.refresh_token = "new-refresh-token"
         mock_supabase.auth.refresh_session.return_value = mock_response
 
+        # Mock profile query
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data={"username": "testuser"}
+        )
+
         response = client.post(
-            "/api/auth/refresh",
-            json={"refresh_token": "old-refresh-token"}
+            "/api/auth/refresh", json={"refresh_token": "old-refresh-token"}
         )
 
         assert response.status_code in [200, 201]

@@ -1,4 +1,5 @@
 """Pytest fixtures and configuration for Elysium server tests."""
+
 import os
 import pytest
 from unittest.mock import Mock, MagicMock, patch
@@ -17,9 +18,25 @@ def make_chainable_query():
     """Create a MagicMock query that returns itself for all chaining methods."""
     query = MagicMock()
     for method in (
-        'select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-        'like', 'ilike', 'or_', 'order', 'range', 'single',
-        'limit', 'insert', 'update', 'delete', 'upsert',
+        "select",
+        "eq",
+        "neq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "like",
+        "ilike",
+        "or_",
+        "order",
+        "range",
+        "single",
+        "limit",
+        "insert",
+        "update",
+        "delete",
+        "upsert",
+        "maybe_single",
     ):
         getattr(query, method).return_value = query
     return query
@@ -46,9 +63,11 @@ def mock_supabase():
     query = make_chainable_query()
     mock.table.return_value = query
 
-    with patch('app.routes.auth.get_supabase', return_value=mock), \
-         patch('app.routes.emblems.get_supabase', return_value=mock), \
-         patch('app.routes.keys.get_supabase', return_value=mock):
+    with (
+        patch("app.routes.auth.get_supabase", return_value=mock),
+        patch("app.routes.emblems.get_supabase", return_value=mock),
+        patch("app.routes.keys.get_supabase", return_value=mock),
+    ):
         yield mock
 
 
@@ -75,7 +94,7 @@ def mock_emblem():
         "latest_version": "1.0.0",
         "downloads_count": 100,
         "created_at": "2024-01-01T00:00:00Z",
-        "updated_at": "2024-01-02T00:00:00Z"
+        "updated_at": "2024-01-02T00:00:00Z",
     }
 
 
@@ -87,7 +106,7 @@ def mock_key():
         "name": "test-key",
         "key": "sk_test_abc123",
         "created_at": "2024-01-01T00:00:00Z",
-        "expires_at": None
+        "expires_at": None,
     }
 
 
@@ -100,10 +119,12 @@ def auth_headers():
 @pytest.fixture
 def mock_supabase_response():
     """Mock Supabase query response."""
+
     def _make_response(data=None, error=None):
         response = MagicMock()
         response.data = data or []
         response.error = error
         response.status_code = 200 if not error else 400
         return response
+
     return _make_response

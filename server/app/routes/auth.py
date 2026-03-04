@@ -21,6 +21,8 @@ security = HTTPBearer()
 
 FRONTEND_URL = get_settings().FRONTEND_URL
 
+oauth_states: dict[str, str] = {}
+
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
 
 

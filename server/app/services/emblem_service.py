@@ -40,9 +40,11 @@ def _row_to_emblem(row: dict) -> Emblem:
     different route handlers.
     """
     profiles = row.get("profiles")
-    author_name: Optional[str] = (
-        profiles.get("username") if isinstance(profiles, dict) else None
-    )
+    if isinstance(profiles, dict):
+        author_name: Optional[str] = profiles.get("username")
+    else:
+        # RPC responses return author_name directly as a flat field
+        author_name = row.get("author_name")
     return Emblem(
         id=row["id"],
         name=row["name"],
@@ -128,27 +130,7 @@ class EmblemService:
                 },
             ).execute()
 
-            emblems: List[Emblem] = []
-            for row in response.data:
-                emblems.append(
-                    Emblem(
-                        id=row["id"],
-                        name=row["name"],
-                        description=row["description"],
-                        author_id=row.get("author_id"),
-                        author_name=row.get("author_name"),
-                        category=row.get("category"),
-                        tags=row.get("tags"),
-                        license=row.get("license", "MIT"),
-                        repository_url=row.get("repository_url"),
-                        homepage_url=row.get("homepage_url"),
-                        latest_version=row.get("latest_version"),
-                        downloads_count=row.get("downloads_count", 0),
-                        created_at=row["created_at"],
-                        updated_at=row["updated_at"],
-                    )
-                )
-            return emblems
+            return [_row_to_emblem(row) for row in response.data]
 
         except Exception:
             # Fallback: ILIKE search when the RPC function is not available.
@@ -299,22 +281,9 @@ class EmblemService:
                 }
             ).execute()
 
-            return Emblem(
-                id=emblem_id,
-                name=request_body.name,
-                description=request_body.description,
-                author_id=user.id,
-                author_name=user.username,
-                category=request_body.category,
-                tags=request_body.tags,
-                license=request_body.license,
-                repository_url=request_body.repository_url,
-                homepage_url=request_body.homepage_url,
-                latest_version=request_body.version,
-                downloads_count=0,
-                created_at=emblem_resp.data[0]["created_at"],
-                updated_at=emblem_resp.data[0]["updated_at"],
-            )
+            row = dict(emblem_resp.data[0])
+            row["author_name"] = user.username  # inject author_name since there's no profiles join
+            return _row_to_emblem(row)
         except HTTPException:
             raise
         except Exception as exc:
@@ -374,23 +343,11 @@ class EmblemService:
                 }
             ).eq("id", emblem_id).execute()
 
-            return Emblem(
-                id=emblem_id,
-                name=name,
-                description=request_body.description
-                or emblem_resp.data["description"],
-                author_id=user.id,
-                author_name=user.username,
-                category=emblem_resp.data.get("category"),
-                tags=emblem_resp.data.get("tags"),
-                license=emblem_resp.data.get("license", "MIT"),
-                repository_url=emblem_resp.data.get("repository_url"),
-                homepage_url=emblem_resp.data.get("homepage_url"),
-                latest_version=request_body.version,
-                downloads_count=emblem_resp.data.get("downloads_count", 0),
-                created_at=emblem_resp.data["created_at"],
-                updated_at=emblem_resp.data["updated_at"],
-            )
+            row = dict(emblem_resp.data)
+            row["author_name"] = user.username  # inject since no profiles join
+            row["description"] = request_body.description or row["description"]
+            row["latest_version"] = request_body.version
+            return _row_to_emblem(row)
         except HTTPException:
             raise
         except Exception as exc:

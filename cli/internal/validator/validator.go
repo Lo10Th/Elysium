@@ -7,6 +7,13 @@ import (
 	"github.com/elysium/elysium/cli/internal/emblem"
 )
 
+var (
+	nameRegex    = regexp.MustCompile(`^[a-z0-9-]+$`)
+	versionRegex = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+	urlRegex     = regexp.MustCompile(`^https?://`)
+	methodRegex  = regexp.MustCompile(`^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$`)
+)
+
 type Validator struct{}
 
 func New() *Validator {
@@ -84,26 +91,17 @@ func (v *Validator) CheckBestPractices(def *emblem.Definition) []string {
 }
 
 func isValidName(name string) bool {
-	matched, _ := regexp.MatchString("^[a-z0-9-]+$", name)
-	return matched
+	return nameRegex.MatchString(name)
 }
 
 func isValidVersion(version string) bool {
-	matched, _ := regexp.MatchString(`^\d+\.\d+\.\d+$`, version)
-	return matched
+	return versionRegex.MatchString(version)
 }
 
 func isValidURL(url string) bool {
-	matched, _ := regexp.MatchString(`^https?://`, url)
-	return matched
+	return urlRegex.MatchString(url)
 }
 
 func isValidHTTPMethod(method string) bool {
-	valid := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
-	for _, v := range valid {
-		if v == method {
-			return true
-		}
-	}
-	return false
+	return methodRegex.MatchString(method)
 }

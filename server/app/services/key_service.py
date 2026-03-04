@@ -88,9 +88,10 @@ class KeyService:
 
         expires_at: Optional[str] = None
         if request_body.expires_days:
+            from datetime import timezone as _tz
             expires_at = (
-                datetime.utcnow() + timedelta(days=request_body.expires_days)
-            ).isoformat() + "Z"
+                datetime.now(_tz.utc) + timedelta(days=request_body.expires_days)
+            ).isoformat()
 
         try:
             response = (

@@ -577,9 +577,17 @@ class AuthService:
         if expires_at and expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=400, detail="Device code has expired")
 
-        # Attempt to get an active session; fall back to magic link if needed.
+        # NOTE: This endpoint's sole responsibility is to mark the device code
+        # as verified so that poll_device_token can later issue tokens.  The
+        # session / magic-link retrieval below was present in the original
+        # implementation but its result is intentionally unused here — the
+        # actual token exchange happens in poll_device_token which generates
+        # its own magic link at that point.  Retained for side-effect
+        # compatibility with any Supabase auth session state.
         session_resp = supabase.auth.get_session()
         if not session_resp or not getattr(session_resp, "access_token", None):
+            # Warm up admin magic-link generation; result consumed by
+            # poll_device_token, not here.
             supabase.auth.admin.generate_link(
                 {"type": "magiclink", "email": user.email}
             )

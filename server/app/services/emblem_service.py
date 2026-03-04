@@ -155,6 +155,9 @@ class EmblemService:
             try:
                 query = supabase.table("emblems").select("*, profiles(username)")
                 # Escape LIKE metacharacters to prevent pattern injection.
+                # PostgREST's `.ilike.` filter passes these escaped characters
+                # directly to PostgreSQL's ILIKE operator, which respects the
+                # standard SQL escape sequence (ESCAPE '\').
                 safe_q = (
                     q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
                 )

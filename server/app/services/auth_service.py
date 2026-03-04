@@ -196,7 +196,8 @@ class AuthService:
                 raise HTTPException(
                     status_code=400, detail="Email already registered"
                 )
-            raise HTTPException(status_code=400, detail=error_msg)
+            logger.error("Registration failed for email='%s': %s", email, exc)
+            raise HTTPException(status_code=400, detail="Registration failed")
 
     @staticmethod
     def login(supabase: Client, email: str, password: str) -> dict:

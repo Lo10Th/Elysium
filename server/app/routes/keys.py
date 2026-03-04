@@ -9,7 +9,7 @@ Routes are responsible only for:
 
 from fastapi import APIRouter, Depends, Request
 
-from app.database import get_supabase
+from app.database import get_supabase, run_sync
 from app.limiter import limiter, PUBLIC_LIMIT, AUTH_LIMIT
 from app.models import KeyCreate, User
 from app.routes.auth import get_current_user
@@ -22,7 +22,7 @@ router = APIRouter()
 @limiter.limit(PUBLIC_LIMIT)
 async def list_keys(request: Request, user: User = Depends(get_current_user)):
     supabase = get_supabase()
-    return KeyService.list_keys(supabase, user.id)
+    return await run_sync(KeyService.list_keys, supabase, user.id)
 
 
 @router.post("", status_code=201)
@@ -33,7 +33,7 @@ async def create_key(
     user: User = Depends(get_current_user),
 ):
     supabase = get_supabase()
-    return KeyService.create_key(supabase, user.id, request_body)
+    return await run_sync(KeyService.create_key, supabase, user.id, request_body)
 
 
 @router.get("/{key_id}")
@@ -42,7 +42,7 @@ async def get_key(
     request: Request, key_id: str, user: User = Depends(get_current_user)
 ):
     supabase = get_supabase()
-    return KeyService.get_key(supabase, user.id, key_id)
+    return await run_sync(KeyService.get_key, supabase, user.id, key_id)
 
 
 @router.delete("/{key_id}", status_code=204)
@@ -51,5 +51,5 @@ async def delete_key(
     request: Request, key_id: str, user: User = Depends(get_current_user)
 ):
     supabase = get_supabase()
-    KeyService.delete_key(supabase, user.id, key_id)
+    await run_sync(KeyService.delete_key, supabase, user.id, key_id)
     return None

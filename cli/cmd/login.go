@@ -7,13 +7,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/elysium/elysium/cli/internal/config"
 	"github.com/elysium/elysium/cli/internal/errfmt"
@@ -23,18 +23,21 @@ import (
 )
 
 var loginEmail string
+var loginWeb bool
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with the Elysium registry",
-	Long: `Authenticate with the Elysium registry using email and password.
+	Long: `Authenticate with the Elysium registry.
 
-If you don't have an account, you'll be prompted to register.`,
+By default, opens a browser for authentication (recommended).
+Use --email flag for email/password authentication.`,
 	RunE: runLogin,
 }
 
 func init() {
-	loginCmd.Flags().StringVarP(&loginEmail, "email", "e", "", "Email address")
+	loginCmd.Flags().StringVarP(&loginEmail, "email", "e", "", "Email address (for password auth)")
+	loginCmd.Flags().BoolVarP(&loginWeb, "web", "w", true, "Open browser for authentication")
 	rootCmd.AddCommand(loginCmd)
 }
 
@@ -63,13 +66,53 @@ type authResponse struct {
 	Detail  string `json:"detail"`
 }
 
+type deviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+	Error           string `json:"error"`
+	Message         string `json:"message"`
+}
+
+type deviceTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	User         struct {
+		ID       string `json:"id"`
+		Email    string `json:"email"`
+		Username string `json:"username"`
+	} `json:"user"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Detail  string `json:"detail"`
+}
+
+type deviceStatusResponse struct {
+	UserCode   string `json:"user_code"`
+	Verified   bool   `json:"verified"`
+	ClientName string `json:"client_name"`
+	ExpiresAt  string `json:"expires_at"`
+}
+
 func runLogin(cmd *cobra.Command, args []string) error {
 	registry := viper.GetString("registry")
 	if registry == "" {
 		registry = "https://ely.karlharrenga.com"
 	}
 
-	// Get email
+	// If email is provided, use password auth
+	if loginEmail != "" {
+		return loginWithEmailPassword(registry)
+	}
+
+	// Otherwise, use browser-based device flow
+	return loginWithBrowser(registry)
+}
+
+func loginWithEmailPassword(registry string) error {
 	email := loginEmail
 	if email == "" {
 		fmt.Print("Email: ")
@@ -86,7 +129,6 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("email is required")
 	}
 
-	// Get password
 	fmt.Print("Password: ")
 	passwordBytes, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
@@ -99,14 +141,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("password is required")
 	}
 
-	// Try to login first
 	authResp, err := attemptLogin(registry, email, password)
 	if err == nil && authResp.AccessToken != "" {
-		// Login successful
 		return saveTokenAndSuccess(authResp)
 	}
 
-	// Check if it was an authentication error vs network error
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "no such host") {
 			return errfmt.ConnectionError(registry, err)
@@ -114,7 +153,6 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return errfmt.NetworkError(err)
 	}
 
-	// Login failed - check if user wants to register
 	fmt.Println()
 	fmt.Println("Authentication failed. Would you like to register a new account? (y/n): ")
 	reader := bufio.NewReader(os.Stdin)
@@ -125,8 +163,153 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("login cancelled")
 	}
 
-	// Register
 	return registerUser(registry, email, password)
+}
+
+func loginWithBrowser(registry string) error {
+	fmt.Println()
+	fmt.Println("  Opening browser for authentication...")
+	fmt.Println()
+
+	// Request device code
+	deviceResp, err := requestDeviceCode(registry)
+	if err != nil {
+		return fmt.Errorf("failed to start device login: %w", err)
+	}
+
+	// Display user code and URL
+	fmt.Printf("  ┌─────────────────────────────────────────────────────┐\n")
+	fmt.Printf("  │                                                     │\n")
+	fmt.Printf("  │   Your device code:  \033[1;36m%s\033[0m              │\n", deviceResp.UserCode)
+	fmt.Printf("  │                                                     │\n")
+	fmt.Printf("  │   Open this URL:                                    │\n")
+	fmt.Printf("  │   \033[4;34m%s\033[0m                    │\n", deviceResp.VerificationURI)
+	fmt.Printf("  │                                                     │\n")
+	fmt.Printf("  └─────────────────────────────────────────────────────┘\n")
+	fmt.Println()
+
+	// Try to open browser
+	urlWithCode := fmt.Sprintf("%s?code=%s", deviceResp.VerificationURI, deviceResp.UserCode)
+	if err := openBrowser(urlWithCode); err != nil {
+		fmt.Println("  Could not open browser automatically. Please open the URL manually.")
+	} else {
+		fmt.Println("  Browser opened. Please authorize the CLI...")
+	}
+
+	fmt.Println()
+	fmt.Printf("  Waiting for authorization")
+
+	// Poll for token
+	interval := deviceResp.Interval
+	if interval == 0 {
+		interval = 5
+	}
+	expiresAt := time.Now().Add(time.Duration(deviceResp.ExpiresIn) * time.Second)
+
+	spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	spinnerIdx := 0
+
+	for time.Now().Before(expiresAt) {
+		time.Sleep(time.Duration(interval) * time.Second)
+
+		// Print spinner
+		fmt.Printf("\r  %s Waiting for authorization...", spinner[spinnerIdx])
+		spinnerIdx = (spinnerIdx + 1) % len(spinner)
+
+		tokenResp, err := pollForToken(registry, deviceResp.DeviceCode)
+		if err != nil {
+			// If "authorization pending", continue polling
+			if strings.Contains(err.Error(), "pending") {
+				continue
+			}
+			return fmt.Errorf("failed to check authorization: %w", err)
+		}
+
+		if tokenResp.AccessToken != "" {
+			fmt.Printf("\r  ✓ Authorization successful!                    \n")
+			fmt.Println()
+
+			authResp := &authResponse{
+				AccessToken:  tokenResp.AccessToken,
+				RefreshToken: tokenResp.RefreshToken,
+				TokenType:    tokenResp.TokenType,
+			}
+			authResp.User.Email = tokenResp.User.Email
+			authResp.User.Username = tokenResp.User.Username
+
+			return saveTokenAndSuccess(authResp)
+		}
+	}
+
+	fmt.Printf("\r  ✗ Authorization timed out                      \n")
+	return fmt.Errorf("device code expired - please try again")
+}
+
+func requestDeviceCode(registry string) (*deviceCodeResponse, error) {
+	url := fmt.Sprintf("%s/api/auth/device/code", registry)
+	req, err := http.NewRequest("POST", url, bytes.NewReader([]byte("{}")))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request device code: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var deviceResp deviceCodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&deviceResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if deviceResp.Error != "" {
+		return nil, fmt.Errorf("%s: %s", deviceResp.Error, deviceResp.Message)
+	}
+
+	return &deviceResp, nil
+}
+
+func pollForToken(registry, deviceCode string) (*deviceTokenResponse, error) {
+	reqBody := map[string]string{"device_code": deviceCode}
+	bodyBytes, _ := json.Marshal(reqBody)
+
+	url := fmt.Sprintf("%s/api/auth/device/token", registry)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to poll for token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tokenResp deviceTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Check for pending status
+	if resp.StatusCode == 400 {
+		if tokenResp.Detail == "Authorization pending" || tokenResp.Message == "Authorization pending" {
+			return nil, fmt.Errorf("authorization pending")
+		}
+		return nil, fmt.Errorf("%s", tokenResp.Detail)
+	}
+
+	if tokenResp.Error != "" {
+		return nil, fmt.Errorf("%s", tokenResp.Error)
+	}
+
+	return &tokenResp, nil
 }
 
 func attemptLogin(registry, email, password string) (*authResponse, error) {
@@ -160,7 +343,6 @@ func attemptLogin(registry, email, password string) (*authResponse, error) {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Check for error response
 	if resp.StatusCode != 200 {
 		if authResp.Detail != "" {
 			return nil, fmt.Errorf("%s", authResp.Detail)
@@ -175,7 +357,6 @@ func attemptLogin(registry, email, password string) (*authResponse, error) {
 }
 
 func registerUser(registry, email, password string) error {
-	// Get username
 	fmt.Println()
 	fmt.Println("Creating a new account...")
 	fmt.Print("Username: ")
@@ -190,7 +371,6 @@ func registerUser(registry, email, password string) error {
 		return fmt.Errorf("username is required")
 	}
 
-	// Confirm password
 	fmt.Print("Confirm password: ")
 	confirmBytes, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
@@ -203,7 +383,6 @@ func registerUser(registry, email, password string) error {
 		return fmt.Errorf("passwords do not match")
 	}
 
-	// Register
 	reqBody := registerRequest{
 		Email:    email,
 		Password: password,
@@ -238,7 +417,6 @@ func registerUser(registry, email, password string) error {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Check for error response
 	if resp.StatusCode != 201 && resp.StatusCode != 200 {
 		if authResp.Detail != "" {
 			return fmt.Errorf("registration failed: %s", authResp.Detail)
@@ -259,20 +437,16 @@ func saveTokenAndSuccess(authResp *authResponse) error {
 		return fmt.Errorf("no access token received")
 	}
 
-	// Store token
 	if err := config.SetToken(authResp.AccessToken); err != nil {
 		return fmt.Errorf("failed to store token: %w", err)
 	}
 
-	// Store refresh token if available
 	if authResp.RefreshToken != "" {
 		if err := config.SetRefreshToken(authResp.RefreshToken); err != nil {
-			// Non-fatal, just log it
 			fmt.Println("Warning: Could not store refresh token")
 		}
 	}
 
-	// Store user info
 	if authResp.User.Email != "" {
 		config.SetUserEmail(authResp.User.Email)
 	}
@@ -283,20 +457,14 @@ func saveTokenAndSuccess(authResp *authResponse) error {
 	fmt.Println()
 	if authResp.User.Username != "" {
 		fmt.Printf("✓ Logged in as %s (%s)\n", authResp.User.Username, authResp.User.Email)
-	} else {
+	} else if authResp.User.Email != "" {
 		fmt.Printf("✓ Logged in as %s\n", authResp.User.Email)
+	} else {
+		fmt.Println("✓ Logged in successfully!")
 	}
 	fmt.Println("Your credentials have been stored securely.")
 
 	return nil
-}
-
-// tokenResponse holds the OAuth token data received via callback.
-type tokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	Error        string `json:"error"`
 }
 
 // generateRandomState creates a cryptographically random base64-encoded state string
@@ -309,69 +477,10 @@ func generateRandomState() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// findAvailablePort finds an available TCP port in the range 8080–8090.
-func findAvailablePort() (int, error) {
-	for port := 8080; port <= 8090; port++ {
-		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err == nil {
-			ln.Close()
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("no available port found in range 8080-8090")
-}
-
 // isCommandAvailable reports whether a command is available on the system PATH.
 func isCommandAvailable(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
-}
-
-// startLocalServer starts a local HTTP server on the given port to handle the
-// OAuth callback. It sends the received token to tokenChan or an error to errChan.
-func startLocalServer(port int, state string, tokenChan chan *tokenResponse, errChan chan error) *http.Server {
-	mux := http.NewServeMux()
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
-	}
-
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-
-		if errMsg := q.Get("error"); errMsg != "" {
-			errChan <- fmt.Errorf("OAuth error: %s", errMsg)
-			fmt.Fprintln(w, "Authentication failed. You can close this window.")
-			return
-		}
-
-		if q.Get("state") != state {
-			errChan <- fmt.Errorf("invalid OAuth state parameter")
-			fmt.Fprintln(w, "Authentication failed: invalid state. You can close this window.")
-			return
-		}
-
-		accessToken := q.Get("access_token")
-		if accessToken == "" {
-			errChan <- fmt.Errorf("no access token received in callback")
-			fmt.Fprintln(w, "Authentication failed: no token received. You can close this window.")
-			return
-		}
-
-		tokenChan <- &tokenResponse{
-			AccessToken:  accessToken,
-			RefreshToken: q.Get("refresh_token"),
-			TokenType:    "bearer",
-		}
-		fmt.Fprintln(w, "Authentication successful! You can close this window and return to the CLI.")
-	})
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errChan <- fmt.Errorf("callback server error: %w", err)
-		}
-	}()
-	return server
 }
 
 // openBrowser attempts to open the given URL in the system's default browser.

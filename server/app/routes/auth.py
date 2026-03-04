@@ -501,3 +501,244 @@ async def oauth_callback(
         raise
     except Exception as e:
         return RedirectResponse(url=f"{redirect_uri}?error=oauth_failed")
+
+
+# ============================================================================
+# Device Code Flow for CLI Authentication
+# ============================================================================
+
+import string
+import time
+
+_DEVICE_CODE_LENGTH = 40
+_USER_CODE_LENGTH = 8
+_DEVICE_CODE_EXPIRY = 600  # 10 minutes
+_POLL_INTERVAL = 5
+
+
+def generate_device_code() -> str:
+    chars = string.ascii_letters + string.digits
+    return "".join(secrets.choice(chars) for _ in range(_DEVICE_CODE_LENGTH))
+
+
+def generate_user_code() -> str:
+    chars = string.ascii_uppercase + string.digits
+    code = "".join(secrets.choice(chars) for _ in range(_USER_CODE_LENGTH))
+    return f"{code[:4]}-{code[4:]}"
+
+
+class DeviceCodeResponse(BaseModel):
+    device_code: str
+    user_code: str
+    verification_uri: str
+    expires_in: int
+    interval: int
+
+
+class DeviceVerifyRequest(BaseModel):
+    user_code: str
+
+
+class DeviceTokenRequest(BaseModel):
+    device_code: str
+
+
+class DeviceTokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: User
+
+
+class DeviceStatusResponse(BaseModel):
+    user_code: str
+    verified: bool
+    client_name: str
+    expires_at: str
+
+
+class DeviceAuthorizationRequest(BaseModel):
+    client_name: str = "Elysium CLI"
+
+
+@router.post("/device/code", response_model=DeviceCodeResponse)
+@limiter.limit(PUBLIC_LIMIT)
+async def create_device_code(
+    request: Request, req: DeviceAuthorizationRequest = DeviceAuthorizationRequest()
+):
+    device_code = generate_device_code()
+    user_code = generate_user_code()
+    expires_at = int(time.time()) + _DEVICE_CODE_EXPIRY
+
+    supabase = get_supabase()
+    supabase.table("device_codes").insert(
+        {
+            "device_code": device_code,
+            "user_code": user_code,
+            "client_name": req.client_name,
+            "expires_at": f"now() + interval '{_DEVICE_CODE_EXPIRY} seconds'",
+        }
+    ).execute()
+
+    return DeviceCodeResponse(
+        device_code=device_code,
+        user_code=user_code,
+        verification_uri=f"{FRONTEND_URL}/device",
+        expires_in=_DEVICE_CODE_EXPIRY,
+        interval=_POLL_INTERVAL,
+    )
+
+
+@router.get("/device/status")
+@limiter.limit(PUBLIC_LIMIT)
+async def get_device_status(request: Request, user_code: str):
+    supabase = get_supabase()
+    result = (
+        supabase.table("device_codes")
+        .select("*")
+        .eq("user_code", user_code.upper())
+        .single()
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Device code not found")
+
+    row = result.data
+    return DeviceStatusResponse(
+        user_code=row["user_code"],
+        verified=row.get("verified_at") is not None,
+        client_name=row.get("client_name", "Elysium CLI"),
+        expires_at=row["expires_at"],
+    )
+
+
+@router.post("/device/verify")
+@limiter.limit(PUBLIC_LIMIT)
+async def verify_device_code(
+    request: Request, req: DeviceVerifyRequest, user: User = Depends(get_current_user)
+):
+    supabase = get_supabase()
+
+    result = (
+        supabase.table("device_codes")
+        .select("*")
+        .eq("user_code", req.user_code.upper())
+        .single()
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Invalid user code")
+
+    row = result.data
+
+    if row.get("verified_at"):
+        raise HTTPException(status_code=400, detail="Device code already verified")
+
+    expires_at = row.get("expires_at")
+    if expires_at:
+        from datetime import datetime, timezone
+
+        if isinstance(expires_at, str):
+            expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        else:
+            expires_dt = expires_at
+        if expires_dt < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Device code has expired")
+
+    auth_response = supabase.auth.sign_in_with_password(
+        {
+            "email": user.email,
+            "password": secrets.token_urlsafe(32),
+        }
+    )
+
+    session_resp = supabase.auth.get_session()
+
+    if not session_resp or not session_resp.access_token:
+        auth_resp = supabase.auth.admin.generate_link(
+            {
+                "type": "magiclink",
+                "email": user.email,
+            }
+        )
+
+    update_data = {
+        "user_id": user.id,
+        "verified_at": "now()",
+    }
+
+    supabase.table("device_codes").update(update_data).eq(
+        "user_code", req.user_code.upper()
+    ).execute()
+
+    return {
+        "message": "Device authorized successfully",
+        "user_code": req.user_code.upper(),
+    }
+
+
+@router.post("/device/token", response_model=DeviceTokenResponse)
+@limiter.limit(PUBLIC_LIMIT)
+async def poll_device_token(request: Request, req: DeviceTokenRequest):
+    supabase = get_supabase()
+
+    result = (
+        supabase.table("device_codes")
+        .select("*")
+        .eq("device_code", req.device_code)
+        .single()
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Invalid device code")
+
+    row = result.data
+
+    expires_at = row.get("expires_at")
+    if expires_at:
+        from datetime import datetime, timezone
+
+        if isinstance(expires_at, str):
+            expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        else:
+            expires_dt = expires_at
+        if expires_dt < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Device code has expired")
+
+    if not row.get("verified_at"):
+        raise HTTPException(status_code=400, detail="Authorization pending")
+
+    if not row.get("user_id"):
+        raise HTTPException(status_code=400, detail="Authorization pending")
+
+    user_id = row["user_id"]
+
+    user_result = (
+        supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+    )
+    profile = user_result.data if user_result.data else {}
+
+    magic_link = supabase.auth.admin.generate_link(
+        {
+            "type": "magiclink",
+            "email": profile.get("email") or user_id,
+        }
+    )
+
+    if not magic_link or not hasattr(magic_link, "properties"):
+        raise HTTPException(status_code=500, detail="Failed to generate session")
+
+    supabase.table("device_codes").delete().eq("device_code", req.device_code).execute()
+
+    return DeviceTokenResponse(
+        access_token=magic_link.properties.get("access_token", ""),
+        refresh_token=magic_link.properties.get("refresh_token", ""),
+        user=User(
+            id=user_id,
+            email=profile.get("email", ""),
+            username=profile.get("username"),
+        ),
+    )

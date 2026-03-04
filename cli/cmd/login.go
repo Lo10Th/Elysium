@@ -17,10 +17,15 @@ import (
 
 	"github.com/elysium/elysium/cli/internal/config"
 	"github.com/elysium/elysium/cli/internal/errfmt"
+	"github.com/elysium/elysium/cli/internal/httpclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
+
+// loginHTTPClient is used for device-code and token-polling requests, where a
+// 10-second client-level timeout prevents indefinite hangs.
+var loginHTTPClient = httpclient.ClientWithTimeout(10 * time.Second)
 
 var loginEmail string
 var loginWeb bool
@@ -254,8 +259,7 @@ func requestDeviceCode(registry string) (*deviceCodeResponse, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := loginHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request device code: %w", err)
 	}
@@ -285,8 +289,7 @@ func pollForToken(registry, deviceCode string) (*deviceTokenResponse, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := loginHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for token: %w", err)
 	}
@@ -331,8 +334,7 @@ func attemptLogin(registry, email, password string) (*authResponse, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpclient.DefaultClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -402,8 +404,7 @@ func registerUser(registry, email, password string) error {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpclient.DefaultClient().Do(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "no such host") {
 			return errfmt.ConnectionError(registry, err)

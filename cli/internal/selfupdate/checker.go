@@ -8,12 +8,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elysium/elysium/cli/internal/httpclient"
 )
 
 const (
 	githubAPIBase = "https://api.github.com/repos/Lo10Th/Elysium/releases"
 	httpTimeout   = 15 * time.Second
 )
+
+// checkerHTTPClient is the shared client used for GitHub API requests.
+// It carries a 15-second timeout to bound release-info fetches.
+var checkerHTTPClient = httpclient.ClientWithTimeout(httpTimeout)
 
 // Release represents a GitHub release.
 type Release struct {
@@ -39,14 +45,13 @@ func GetReleaseByTag(tag string) (*Release, error) {
 }
 
 func fetchRelease(url string) (*Release, error) {
-	client := &http.Client{Timeout: httpTimeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := client.Do(req)
+	resp, err := checkerHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch release info: %w", err)
 	}

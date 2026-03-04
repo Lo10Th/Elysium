@@ -408,10 +408,33 @@ git push origin v1.0.0
 
 MIT License - see [LICENSE](LICENSE)
 
+## Documentation
+
+| Document | Description |
+|---|---|
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Installation and first steps |
+| [docs/EMBLEM_SPEC.md](docs/EMBLEM_SPEC.md) | Full emblem YAML specification |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and component overview |
+| [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) | Deploying the registry server |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security policy and vulnerability reporting |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common problems and solutions |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+
+## Example Emblems
+
+| Emblem | Description |
+|---|---|
+| [examples/clothing-shop](examples/clothing-shop/emblem.yaml) | E-commerce REST API (local development) |
+| [examples/stripe](examples/stripe/emblem.yaml) | Stripe payments — customers, intents, charges |
+| [examples/github](examples/github/emblem.yaml) | GitHub — repos, issues, pull requests, users |
+| [examples/slack](examples/slack/emblem.yaml) | Slack — messages, channels, users |
+
 ## Support
 
 - 📚 Documentation: [docs/](docs/)
 - 🐛 Issues: [GitHub Issues](https://github.com/Lo10Th/Elysium/issues)
+- 🔒 Security: [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 

@@ -1,0 +1,414 @@
+apiVersion: v1
+name: github
+version: 1.0.0
+description: GitHub REST API — repositories, issues, pull requests, and users
+author: Elysium Team
+license: MIT
+
+baseUrl: https://api.github.com
+
+auth:
+  type: bearer
+  keyEnv: GITHUB_TOKEN
+
+tags:
+  - github
+  - vcs
+  - devtools
+  - rest
+
+category: integration
+
+types:
+  Repository:
+    description: A GitHub repository
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique repository ID
+      name:
+        type: string
+        required: true
+        description: Repository name (without owner prefix)
+      full_name:
+        type: string
+        required: true
+        description: Full repository name including owner (e.g. owner/repo)
+      description:
+        type: string
+        required: false
+        description: Repository description
+      private:
+        type: boolean
+        required: true
+        description: Whether the repository is private
+      html_url:
+        type: string
+        required: true
+        description: URL to the repository on GitHub
+      stargazers_count:
+        type: integer
+        required: false
+        description: Number of stars
+      forks_count:
+        type: integer
+        required: false
+        description: Number of forks
+      open_issues_count:
+        type: integer
+        required: false
+        description: Number of open issues
+      default_branch:
+        type: string
+        required: false
+        description: Default branch name (usually main or master)
+
+  Issue:
+    description: A GitHub issue
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique issue ID
+      number:
+        type: integer
+        required: true
+        description: Issue number within the repository
+      title:
+        type: string
+        required: true
+        description: Issue title
+      body:
+        type: string
+        required: false
+        description: Issue body (Markdown)
+      state:
+        type: string
+        required: true
+        description: "Issue state: open or closed"
+      html_url:
+        type: string
+        required: true
+        description: URL to the issue on GitHub
+
+  PullRequest:
+    description: A GitHub pull request
+    properties:
+      id:
+        type: integer
+        required: true
+        description: Unique pull request ID
+      number:
+        type: integer
+        required: true
+        description: PR number within the repository
+      title:
+        type: string
+        required: true
+        description: Pull request title
+      body:
+        type: string
+        required: false
+        description: Pull request body (Markdown)
+      state:
+        type: string
+        required: true
+        description: "PR state: open or closed"
+      merged:
+        type: boolean
+        required: false
+        description: Whether the PR has been merged
+      html_url:
+        type: string
+        required: true
+        description: URL to the PR on GitHub
+
+  User:
+    description: A GitHub user
+    properties:
+      login:
+        type: string
+        required: true
+        description: GitHub username
+      id:
+        type: integer
+        required: true
+        description: Unique user ID
+      name:
+        type: string
+        required: false
+        description: Display name
+      email:
+        type: string
+        required: false
+        description: Public email address
+      bio:
+        type: string
+        required: false
+        description: User bio
+      public_repos:
+        type: integer
+        required: false
+        description: Number of public repositories
+      followers:
+        type: integer
+        required: false
+        description: Number of followers
+      html_url:
+        type: string
+        required: true
+        description: URL to user profile on GitHub
+
+actions:
+  # ── Repositories ─────────────────────────────────────────────────
+  get-repo:
+    description: Get details for a repository
+    method: GET
+    path: /repos/{owner}/{repo}
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner (user or org)
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+    responses:
+      200:
+        description: Repository details
+        schema: Repository
+      404:
+        description: Repository not found
+
+  list-repos:
+    description: List public repositories for a user or organization
+    method: GET
+    path: /users/{username}/repos
+    parameters:
+      - name: username
+        type: string
+        in: path
+        required: true
+        description: GitHub username or organization
+      - name: type
+        type: string
+        in: query
+        required: false
+        description: Type of repositories to return
+        enum:
+          - all
+          - owner
+          - forks
+          - sources
+          - member
+      - name: sort
+        type: string
+        in: query
+        required: false
+        description: Sort field
+        enum:
+          - created
+          - updated
+          - pushed
+          - full_name
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        description: Number of results per page (max 100)
+    responses:
+      200:
+        description: List of repositories
+
+  # ── Issues ────────────────────────────────────────────────────────
+  list-issues:
+    description: List issues in a repository
+    method: GET
+    path: /repos/{owner}/{repo}/issues
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+      - name: state
+        type: string
+        in: query
+        required: false
+        description: Filter by state
+        enum:
+          - open
+          - closed
+          - all
+      - name: labels
+        type: string
+        in: query
+        required: false
+        description: Comma-separated list of label names to filter by
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        description: Number of results per page (max 100)
+    responses:
+      200:
+        description: List of issues
+
+  get-issue:
+    description: Get a single issue by number
+    method: GET
+    path: /repos/{owner}/{repo}/issues/{issue_number}
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+      - name: issue_number
+        type: integer
+        in: path
+        required: true
+        description: Issue number
+    responses:
+      200:
+        description: Issue details
+        schema: Issue
+      404:
+        description: Issue not found
+
+  create-issue:
+    description: Create a new issue in a repository
+    method: POST
+    path: /repos/{owner}/{repo}/issues
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          title:
+            type: string
+            required: true
+            description: Issue title
+          body:
+            type: string
+            required: false
+            description: Issue body (Markdown)
+    responses:
+      201:
+        description: The created issue
+        schema: Issue
+
+  # ── Pull Requests ─────────────────────────────────────────────────
+  list-pull-requests:
+    description: List pull requests in a repository
+    method: GET
+    path: /repos/{owner}/{repo}/pulls
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+      - name: state
+        type: string
+        in: query
+        required: false
+        description: Filter by state
+        enum:
+          - open
+          - closed
+          - all
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        description: Number of results per page (max 100)
+    responses:
+      200:
+        description: List of pull requests
+
+  get-pull-request:
+    description: Get a single pull request by number
+    method: GET
+    path: /repos/{owner}/{repo}/pulls/{pull_number}
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+      - name: pull_number
+        type: integer
+        in: path
+        required: true
+        description: Pull request number
+    responses:
+      200:
+        description: Pull request details
+        schema: PullRequest
+      404:
+        description: Pull request not found
+
+  # ── Users ─────────────────────────────────────────────────────────
+  get-user:
+    description: Get a user's public profile
+    method: GET
+    path: /users/{username}
+    parameters:
+      - name: username
+        type: string
+        in: path
+        required: true
+        description: GitHub username
+    responses:
+      200:
+        description: User profile
+        schema: User
+      404:
+        description: User not found
+
+  get-authenticated-user:
+    description: Get the currently authenticated user (requires GITHUB_TOKEN)
+    method: GET
+    path: /user
+    responses:
+      200:
+        description: Authenticated user profile
+        schema: User
+      401:
+        description: Requires authentication

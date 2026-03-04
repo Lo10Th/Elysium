@@ -1,0 +1,315 @@
+apiVersion: v1
+name: stripe
+version: 1.0.0
+description: Stripe payment processing API — customers, payment intents, and charges
+author: Elysium Team
+license: MIT
+
+baseUrl: https://api.stripe.com/v1
+
+auth:
+  type: bearer
+  keyEnv: STRIPE_API_KEY
+
+tags:
+  - payments
+  - finance
+  - stripe
+  - rest
+
+category: payments
+
+types:
+  Customer:
+    description: A Stripe customer object
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique customer identifier (e.g. cus_xyz)
+      email:
+        type: string
+        required: false
+        description: Customer email address
+      name:
+        type: string
+        required: false
+        description: Customer full name
+      description:
+        type: string
+        required: false
+        description: Arbitrary description for internal notes
+      created:
+        type: integer
+        required: false
+        description: Unix timestamp of when the customer was created
+
+  PaymentIntent:
+    description: A Stripe PaymentIntent object
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique PaymentIntent identifier (e.g. pi_xyz)
+      amount:
+        type: integer
+        required: true
+        description: Amount in the smallest currency unit (e.g. cents for USD)
+      currency:
+        type: string
+        required: true
+        description: Three-letter ISO currency code (e.g. usd, eur)
+      status:
+        type: string
+        required: true
+        description: "Current status: requires_payment_method, requires_confirmation, processing, succeeded, canceled"
+      customer:
+        type: string
+        required: false
+        description: ID of the customer this PaymentIntent is associated with
+      description:
+        type: string
+        required: false
+        description: An arbitrary string attached to the object
+      created:
+        type: integer
+        required: false
+        description: Unix timestamp of when the PaymentIntent was created
+
+  Charge:
+    description: A Stripe Charge object
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique charge identifier (e.g. ch_xyz)
+      amount:
+        type: integer
+        required: true
+        description: Amount charged in smallest currency unit
+      currency:
+        type: string
+        required: true
+        description: Three-letter ISO currency code
+      captured:
+        type: boolean
+        required: true
+        description: Whether the charge has been captured
+      paid:
+        type: boolean
+        required: true
+        description: Whether the charge succeeded
+      status:
+        type: string
+        required: true
+        description: "Status of the charge: succeeded, pending, or failed"
+      customer:
+        type: string
+        required: false
+        description: ID of the customer associated with this charge
+      description:
+        type: string
+        required: false
+        description: Arbitrary description of the charge
+      created:
+        type: integer
+        required: false
+        description: Unix timestamp of when the charge was created
+
+actions:
+  # ── Customers ────────────────────────────────────────────────────
+  list-customers:
+    description: List all customers (most recent first)
+    method: GET
+    path: /customers
+    parameters:
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Number of customers to return (1–100, default 10)
+      - name: email
+        type: string
+        in: query
+        required: false
+        description: Filter customers by exact email address
+    responses:
+      200:
+        description: A paginated list of customers
+
+  get-customer:
+    description: Retrieve a customer by ID
+    method: GET
+    path: /customers/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: Stripe customer ID (e.g. cus_xyz)
+    responses:
+      200:
+        description: Customer object
+        schema: Customer
+      404:
+        description: No such customer
+
+  create-customer:
+    description: Create a new Stripe customer
+    method: POST
+    path: /customers
+    requestBody:
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          email:
+            type: string
+            required: false
+            description: Customer email address
+          name:
+            type: string
+            required: false
+            description: Customer full name
+          description:
+            type: string
+            required: false
+            description: Arbitrary description
+    responses:
+      200:
+        description: The newly created customer
+        schema: Customer
+
+  delete-customer:
+    description: Permanently delete a customer and cancel any active subscriptions
+    method: DELETE
+    path: /customers/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: Stripe customer ID
+    responses:
+      200:
+        description: Deletion confirmation object
+
+  # ── Payment Intents ───────────────────────────────────────────────
+  create-payment-intent:
+    description: Create a PaymentIntent to collect a payment
+    method: POST
+    path: /payment_intents
+    requestBody:
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          amount:
+            type: integer
+            required: true
+            description: Amount in smallest currency unit (e.g. 1000 = $10.00 USD)
+          currency:
+            type: string
+            required: true
+            description: Three-letter ISO currency code (e.g. usd)
+          customer:
+            type: string
+            required: false
+            description: Stripe customer ID to associate this payment with
+          description:
+            type: string
+            required: false
+            description: Arbitrary description of the payment
+    responses:
+      200:
+        description: The created PaymentIntent
+        schema: PaymentIntent
+
+  get-payment-intent:
+    description: Retrieve a PaymentIntent by ID
+    method: GET
+    path: /payment_intents/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: PaymentIntent ID (e.g. pi_xyz)
+    responses:
+      200:
+        description: The PaymentIntent object
+        schema: PaymentIntent
+
+  confirm-payment-intent:
+    description: Confirm a PaymentIntent to attempt collection of payment
+    method: POST
+    path: /payment_intents/{id}/confirm
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: PaymentIntent ID
+    requestBody:
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          payment_method:
+            type: string
+            required: false
+            description: Payment method ID to attach and confirm with
+    responses:
+      200:
+        description: The confirmed PaymentIntent
+        schema: PaymentIntent
+
+  cancel-payment-intent:
+    description: Cancel a PaymentIntent before it reaches a terminal state (succeeded or canceled)
+    method: POST
+    path: /payment_intents/{id}/cancel
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: PaymentIntent ID
+    responses:
+      200:
+        description: The canceled PaymentIntent
+        schema: PaymentIntent
+
+  # ── Charges ───────────────────────────────────────────────────────
+  list-charges:
+    description: List all charges (most recent first)
+    method: GET
+    path: /charges
+    parameters:
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Number of charges to return (1–100, default 10)
+      - name: customer
+        type: string
+        in: query
+        required: false
+        description: Filter charges by customer ID
+    responses:
+      200:
+        description: A paginated list of charges
+
+  get-charge:
+    description: Retrieve a charge by ID
+    method: GET
+    path: /charges/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: Charge ID (e.g. ch_xyz)
+    responses:
+      200:
+        description: The charge object
+        schema: Charge

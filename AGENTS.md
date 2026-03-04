@@ -398,6 +398,111 @@ with open('examples/clothing-shop/emblem.yaml') as f:
 - [Supabase Docs](https://supabase.com/docs)
 - [JSON Schema](https://json-schema.org/)
 
+## PR Review Agent
+
+### Purpose
+Systematic code review for all pull requests targeting v1.0.0.
+
+### Review Checklist
+
+#### 1. Tests
+- [ ] All existing tests pass
+- [ ] New code has tests
+- [ ] Coverage not decreased
+- [ ] Edge cases tested
+
+#### 2. Code Quality
+- [ ] Follows style guide (gofmt for Go, black/ruff for Python)
+- [ ] No code duplication
+- [ ] Meaningful variable names
+- [ ] Comments for complex logic
+
+#### 3. Performance
+- [ ] No unnecessary allocations
+- [ ] HTTP clients reused (Go)
+- [ ] DB calls wrapped in async (Python)
+- [ ] No N+1 queries
+
+#### 4. Security
+- [ ] No exposed internal errors
+- [ ] Input validation present
+- [ ] No hardcoded secrets
+- [ ] Rate limiting applied
+
+#### 5. Documentation
+- [ ] Public functions documented
+- [ ] README updated if needed
+- [ ] CHANGELOG updated
+- [ ] Examples provided
+
+#### 6. Refactoring-Specific Checks
+- [ ] Changes are minimal and focused
+- [ ] Refactoring done one file at a time
+- [ ] Tests run after each change
+- [ ] No breaking changes without migration guide
+
+### Review Process
+
+1. **Automated Checks**
+   - CI tests pass
+   - Code coverage report
+   - Linting/formatting
+
+2. **Manual Review**
+   - Read through all changed files
+   - Check against checklist above
+   - Run tests locally if needed
+
+3. **Feedback**
+   - Use constructive language
+   - Provide code examples
+   - Link to documentation
+   - Explain "why" not just "what"
+
+### Review Template
+
+```markdown
+## Overview
+[Brief summary of changes]
+
+## ✅ What's Good
+- [List positive aspects]
+
+## 🔍 Needs Attention
+
+### Tests
+- [ ] Item 1
+- [ ] Item 2
+
+### Code Quality
+- [ ] Item 1
+
+### Performance
+- [ ] Item 1
+
+### Security
+- [ ] Item 1
+
+### Documentation
+- [ ] Item 1
+
+## 💡 Suggestions
+[Optional: Specific improvement suggestions]
+
+## 🎯 Required Changes
+[Must-fix items before merge]
+
+## Questions
+[Clarifying questions]
+```
+
+### Blocking Issues
+STOP the review if:
+- Tests are failing
+- Security vulnerability introduced
+- Breaking change without migration guide
+- Coverage decreased significantly
+
 ## Contact
 
 - GitHub Issues: https://github.com/Lo10Th/Elysium/issues

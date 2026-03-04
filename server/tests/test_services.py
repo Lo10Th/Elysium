@@ -80,6 +80,19 @@ class TestRowToEmblem:
         emblem = _row_to_emblem(row)
         assert emblem.author_name is None
 
+    def test_flat_author_name_fallback(self):
+        """RPC rows carry author_name directly without a profiles dict."""
+        row = {k: v for k, v in SAMPLE_ROW.items() if k != "profiles"}
+        row["author_name"] = "alice"
+        emblem = _row_to_emblem(row)
+        assert emblem.author_name == "alice"
+
+    def test_flat_author_name_missing(self):
+        """RPC rows with no author_name yield None."""
+        row = {k: v for k, v in SAMPLE_ROW.items() if k != "profiles"}
+        emblem = _row_to_emblem(row)
+        assert emblem.author_name is None
+
 
 # ---------------------------------------------------------------------------
 # EmblemService.validate_yaml

@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/elysium/elysium/cli/internal/httpclient"
 )
 
 const downloadTimeout = 10 * time.Minute
@@ -48,8 +50,7 @@ func DownloadBinary(url string) (string, error) {
 		return "", fmt.Errorf("failed to create download request: %w", err)
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpclient.DefaultClient().Do(req)
 	if err != nil {
 		return "", fmt.Errorf("download failed: %w", err)
 	}

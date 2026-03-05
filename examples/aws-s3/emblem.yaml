@@ -1,7 +1,7 @@
 apiVersion: v1
 name: aws-s3
 version: 1.0.0
-description: AWS Simple Storage Service (S3) API for managing cloud storage buckets and objects. Requires AWS Signature Version 4 signing.
+description: AWS Simple Storage Service (S3) API for managing cloud storage buckets and objects. Authentication uses AWS Signature Version 4 — set both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.
 author: Elysium Team
 license: MIT
 homepage: https://docs.aws.amazon.com/s3/
@@ -45,19 +45,6 @@ types:
         type: string
         required: false
         description: The date and time the bucket was created (ISO 8601)
-      owner:
-        type: object
-        required: false
-        description: The AWS account that owns the bucket
-        properties:
-          id:
-            type: string
-            required: true
-            description: The canonical user ID of the owner
-          display_name:
-            type: string
-            required: false
-            description: The display name of the owner account
 
   S3Object:
     description: An object stored within an S3 bucket
@@ -90,10 +77,38 @@ actions:
     path: /
     responses:
       200:
-        description: A list of S3 buckets owned by the account
+        description: Owner information and list of S3 buckets owned by the account
         schema:
-          type: array
-          items: Bucket
+          type: object
+          properties:
+            owner:
+              type: object
+              required: true
+              description: The AWS account that owns the buckets
+              properties:
+                id:
+                  type: string
+                  required: true
+                  description: Canonical user ID
+                display_name:
+                  type: string
+                  required: false
+                  description: Display name of the owner
+            buckets:
+              type: array
+              required: true
+              description: List of buckets owned by the account
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    required: true
+                    description: Bucket name
+                  creation_date:
+                    type: string
+                    required: false
+                    description: Bucket creation date (ISO 8601)
 
   create-bucket:
     description: Create a new S3 bucket with the specified globally unique name
@@ -157,10 +172,61 @@ actions:
         description: Token from a previous response to retrieve the next page of results
     responses:
       200:
-        description: A paginated list of objects within the specified bucket
+        description: Paginated list of objects with bucket metadata and continuation token
         schema:
-          type: array
-          items: S3Object
+          type: object
+          properties:
+            name:
+              type: string
+              required: true
+              description: The bucket name
+            prefix:
+              type: string
+              required: false
+              description: The prefix used to filter results
+            max_keys:
+              type: integer
+              required: false
+              description: Maximum number of keys returned
+            key_count:
+              type: integer
+              required: false
+              description: Number of keys returned in this response
+            is_truncated:
+              type: boolean
+              required: false
+              description: Whether more results are available
+            next_continuation_token:
+              type: string
+              required: false
+              description: Token to retrieve the next page of results
+            contents:
+              type: array
+              required: false
+              description: List of matching objects in the bucket
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    required: true
+                    description: Object key
+                  size:
+                    type: integer
+                    required: false
+                    description: Object size in bytes
+                  last_modified:
+                    type: string
+                    required: false
+                    description: Last modified timestamp (ISO 8601)
+                  etag:
+                    type: string
+                    required: false
+                    description: Entity tag (MD5 hash) of the object
+                  storage_class:
+                    type: string
+                    required: false
+                    description: Storage class (e.g. STANDARD, GLACIER)
       404:
         description: The specified bucket does not exist
 
@@ -235,3 +301,37 @@ actions:
         description: Object deleted successfully
       404:
         description: The specified bucket or object does not exist
+
+errors:
+  - code: 400
+    error: bad_request
+    message: Bad Request
+    description: The request was malformed or contained invalid parameters
+  - code: 403
+    error: access_denied
+    message: Access Denied
+    description: The AWS credentials do not have permission to perform this operation
+  - code: 404
+    error: no_such_bucket
+    message: No Such Bucket
+    description: The specified bucket does not exist; check the error code field for "NoSuchBucket" to distinguish from missing-key errors
+  - code: 404
+    error: no_such_key
+    message: No Such Key
+    description: The specified object key does not exist in the bucket; check the error code field for "NoSuchKey" to distinguish from missing-bucket errors
+  - code: 409
+    error: bucket_already_exists
+    message: Bucket Already Exists
+    description: The requested bucket name is already in use by another account
+  - code: 409
+    error: bucket_not_empty
+    message: Bucket Not Empty
+    description: The bucket cannot be deleted because it is not empty
+  - code: 413
+    error: entity_too_large
+    message: Entity Too Large
+    description: The upload exceeds the maximum allowed object size (5 TB)
+  - code: 500
+    error: internal_error
+    message: Internal Error
+    description: An internal error occurred on the S3 service; retry the request

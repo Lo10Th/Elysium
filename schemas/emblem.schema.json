@@ -101,6 +101,13 @@
         "$ref": "#/definitions/action"
       },
       "description": "Available API actions"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/errorDefinition"
+      },
+      "description": "Common error responses for the API"
     }
   },
   "definitions": {
@@ -183,6 +190,13 @@
           "additionalProperties": {
             "$ref": "#/definitions/property"
           }
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": ["string", "number", "integer", "boolean"]
+          },
+          "description": "Allowed values for this property"
         }
       }
     },

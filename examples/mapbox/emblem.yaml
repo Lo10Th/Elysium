@@ -1,0 +1,601 @@
+apiVersion: v1
+name: mapbox
+version: 1.0.0
+description: Mapbox APIs for forward and reverse geocoding, turn-by-turn directions, and place search powered by precise location data
+author: Mapbox
+license: MIT
+homepage: https://docs.mapbox.com/api/
+
+baseUrl: https://api.mapbox.com
+
+auth:
+  type: none
+
+tags:
+  - maps
+  - geocoding
+  - directions
+  - location
+  - search
+
+category: other
+
+types:
+  GeocodingFeature:
+    description: A GeoJSON Feature returned by the Mapbox Geocoding API representing a matched place or address
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique feature identifier (e.g., "place.12345")
+      type:
+        type: string
+        required: true
+        description: GeoJSON object type, always "Feature"
+      place_name:
+        type: string
+        required: true
+        description: Human-readable place name including address hierarchy (e.g., "1600 Pennsylvania Ave NW, Washington, DC 20500, United States")
+      place_type:
+        type: array
+        required: false
+        description: Array of feature category types (e.g., address, place, region, country, poi)
+        items:
+          type: string
+      relevance:
+        type: number
+        required: false
+        description: Relevance score between 0 and 1 indicating how well the result matches the query
+      center:
+        type: array
+        required: false
+        description: Coordinates of the feature as [longitude, latitude]
+        items:
+          type: number
+      geometry:
+        type: object
+        required: false
+        description: GeoJSON Point geometry containing the feature's coordinates
+      properties:
+        type: object
+        required: false
+        description: Additional feature properties such as address, category, and landmark status
+      context:
+        type: array
+        required: false
+        description: Ordered list of parent places providing geographic context (e.g., city, state, country)
+        items:
+          type: object
+      bbox:
+        type: array
+        required: false
+        description: Bounding box for the feature as [min_lon, min_lat, max_lon, max_lat]
+        items:
+          type: number
+
+  DirectionsRoute:
+    description: A computed route returned by the Mapbox Directions API including geometry, duration, and step-by-step legs
+    properties:
+      distance:
+        type: number
+        required: true
+        description: Total route distance in meters
+      duration:
+        type: number
+        required: true
+        description: Estimated travel time along the route in seconds
+      duration_typical:
+        type: number
+        required: false
+        description: Typical travel time based on historical traffic data, in seconds
+      geometry:
+        type: object
+        required: false
+        description: Route geometry as a GeoJSON LineString or encoded polyline depending on the geometries parameter
+      weight:
+        type: number
+        required: false
+        description: Numeric value used to rank routes during optimization
+      weight_name:
+        type: string
+        required: false
+        description: Name of the weight metric used (e.g., routability, duration, distance)
+      legs:
+        type: array
+        required: true
+        description: List of route legs connecting consecutive waypoints, each containing steps and annotations
+        items:
+          type: object
+      voiceLocale:
+        type: string
+        required: false
+        description: Locale used for voice instructions on this route
+
+  SearchSuggestion:
+    description: A place or POI suggestion returned by the Mapbox Search API in response to a query
+    properties:
+      name:
+        type: string
+        required: true
+        description: Primary display name of the suggested place
+      mapbox_id:
+        type: string
+        required: true
+        description: Unique Mapbox identifier for the feature, usable for retrieval
+      feature_type:
+        type: string
+        required: false
+        description: Category of the feature (e.g., place, address, poi, street, region)
+      place_formatted:
+        type: string
+        required: false
+        description: Formatted secondary text describing the place location or address
+      full_address:
+        type: string
+        required: false
+        description: Complete formatted address string for the suggestion
+      language:
+        type: string
+        required: false
+        description: IETF language tag of the suggestion text (e.g., en, fr, de)
+      maki:
+        type: string
+        required: false
+        description: Maki icon identifier for rendering a map marker (e.g., restaurant, park, lodging)
+      context:
+        type: object
+        required: false
+        description: Structured context including country, region, district, place, and postcode objects
+
+actions:
+  geocode:
+    description: Forward geocode a text address or place name to geographic coordinates
+    method: GET
+    path: /geocoding/v5/mapbox.places/{search_text}.json
+    parameters:
+      - name: search_text
+        type: string
+        in: path
+        required: true
+        description: Address, place name, or search query to geocode (URL-encoded)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
+      - name: proximity
+        type: string
+        in: query
+        required: false
+        description: Bias results toward a location, given as "longitude,latitude" or "ip"
+      - name: country
+        type: string
+        in: query
+        required: false
+        description: Restrict results to one or more countries using ISO 3166-1 alpha-2 codes (comma-separated, e.g., "us,ca")
+      - name: language
+        type: string
+        in: query
+        required: false
+        description: IETF language code for the response text (e.g., en, fr, de, ja)
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        default: 5
+        description: Maximum number of results to return (1–10)
+      - name: types
+        type: string
+        in: query
+        required: false
+        description: Filter results by feature type (comma-separated, e.g., "place,address,poi,region,country")
+      - name: bbox
+        type: string
+        in: query
+        required: false
+        description: Bounding box to restrict results, as "min_lon,min_lat,max_lon,max_lat"
+      - name: autocomplete
+        type: boolean
+        in: query
+        required: false
+        default: true
+        description: Whether to enable autocomplete matching on partial queries
+      - name: fuzzyMatch
+        type: boolean
+        in: query
+        required: false
+        default: true
+        description: Whether to apply fuzzy matching for approximate input
+    responses:
+      200:
+        description: GeoJSON FeatureCollection containing geocoding results ranked by relevance
+        schema:
+          type: object
+          properties:
+            type:
+              type: string
+              description: Always "FeatureCollection"
+            query:
+              type: array
+              description: Tokenized input query terms
+              items:
+                type: string
+            features:
+              type: array
+              description: Ordered list of matched geocoding features
+              items:
+                type: object
+            attribution:
+              type: string
+              description: Attribution text required when displaying Mapbox data
+      400:
+        description: Invalid request parameters or malformed search text
+      401:
+        description: Missing or invalid Mapbox access token
+      429:
+        description: Rate limit exceeded
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The search text or query parameters are malformed or missing
+      - code: 401
+        error: unauthorized
+        message: Invalid or missing access token
+        description: A valid MAPBOX_ACCESS_TOKEN environment variable is required
+      - code: 404
+        error: not_found
+        message: Geocoding profile not found
+        description: The specified geocoding endpoint or profile does not exist
+      - code: 422
+        error: unprocessable_entity
+        message: Unable to process search text
+        description: The provided search text cannot be geocoded as submitted
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The rate limit has been exceeded; check Retry-After header for backoff time
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on the Mapbox servers
+
+  reverse-geocode:
+    description: Reverse geocode a longitude and latitude coordinate pair to a human-readable address
+    method: GET
+    path: /geocoding/v5/mapbox.places/{longitude},{latitude}.json
+    parameters:
+      - name: longitude
+        type: number
+        in: path
+        required: true
+        description: Longitude of the point to reverse geocode (decimal degrees, -180 to 180)
+      - name: latitude
+        type: number
+        in: path
+        required: true
+        description: Latitude of the point to reverse geocode (decimal degrees, -90 to 90)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
+      - name: language
+        type: string
+        in: query
+        required: false
+        description: IETF language code for the response text (e.g., en, fr, de)
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        default: 1
+        description: Maximum number of results to return (1–5 for reverse geocoding)
+      - name: types
+        type: string
+        in: query
+        required: false
+        description: Filter results by feature type (comma-separated, e.g., "address,place,region")
+      - name: country
+        type: string
+        in: query
+        required: false
+        description: Restrict results to one or more countries using ISO 3166-1 alpha-2 codes (comma-separated)
+      - name: reverseMode
+        type: string
+        in: query
+        required: false
+        default: distance
+        description: How results are ranked for reverse geocoding
+        enum:
+          - distance
+          - score
+    responses:
+      200:
+        description: GeoJSON FeatureCollection containing reverse geocoding results for the given coordinates
+        schema:
+          type: object
+          properties:
+            type:
+              type: string
+              description: Always "FeatureCollection"
+            query:
+              type: array
+              description: Input coordinates as [longitude, latitude]
+              items:
+                type: number
+            features:
+              type: array
+              description: Ordered list of matched location features
+              items:
+                type: object
+            attribution:
+              type: string
+              description: Attribution text required when displaying Mapbox data
+      400:
+        description: Coordinates are out of valid range or request is malformed
+      401:
+        description: Missing or invalid Mapbox access token
+      422:
+        description: Coordinates cannot be reverse geocoded
+      429:
+        description: Rate limit exceeded
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid coordinates
+        description: The longitude or latitude values are outside their valid ranges or the request is malformed
+      - code: 401
+        error: unauthorized
+        message: Invalid or missing access token
+        description: A valid MAPBOX_ACCESS_TOKEN environment variable is required
+      - code: 422
+        error: unprocessable_entity
+        message: Unable to process coordinates
+        description: The provided coordinates cannot be reverse geocoded (e.g., coordinates in the ocean with no nearby features)
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The rate limit has been exceeded; check Retry-After header for backoff time
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on the Mapbox servers
+
+  directions:
+    description: Get turn-by-turn directions and route geometry between two or more waypoints using a specified travel profile
+    method: GET
+    path: /directions/v5/mapbox/{profile}/{coordinates}
+    parameters:
+      - name: profile
+        type: string
+        in: path
+        required: true
+        description: Routing profile that determines the mode of travel and road network used
+        enum:
+          - driving
+          - driving-traffic
+          - walking
+          - cycling
+      - name: coordinates
+        type: string
+        in: path
+        required: true
+        description: Semicolon-separated waypoints as "longitude,latitude" pairs (minimum 2, maximum 25 waypoints)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
+      - name: alternatives
+        type: boolean
+        in: query
+        required: false
+        default: false
+        description: Whether to return up to two alternative routes in addition to the primary route
+      - name: geometries
+        type: string
+        in: query
+        required: false
+        default: polyline
+        description: Format in which route geometry is returned
+        enum:
+          - geojson
+          - polyline
+          - polyline6
+      - name: language
+        type: string
+        in: query
+        required: false
+        description: IETF language code for turn-by-turn voice and text instructions (e.g., en, fr, de)
+      - name: overview
+        type: string
+        in: query
+        required: false
+        default: simplified
+        description: Level of detail for the returned route geometry overview. Use "full" for the complete geometry, "simplified" for a generalized version, or "none" to omit overview geometry entirely
+        enum:
+          - full
+          - simplified
+          - none
+      - name: steps
+        type: boolean
+        in: query
+        required: false
+        default: false
+        description: Whether to include step-by-step maneuver instructions with each route leg
+      - name: annotations
+        type: string
+        in: query
+        required: false
+        description: Additional per-segment metadata to include (comma-separated, e.g., "duration,distance,speed,congestion")
+      - name: continue_straight
+        type: boolean
+        in: query
+        required: false
+        description: Whether routes should avoid u-turns at intermediate waypoints
+      - name: exclude
+        type: string
+        in: query
+        required: false
+        description: Road classes to exclude from routes (comma-separated, e.g., "toll,ferry,motorway")
+    responses:
+      200:
+        description: Directions response containing computed routes and snapped waypoint locations
+        schema:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Status string indicating success or reason for no route (e.g., Ok, NoRoute, NoSegment)
+            routes:
+              type: array
+              description: List of computed routes ordered by weight (best route first)
+              items:
+                type: object
+            waypoints:
+              type: array
+              description: Waypoints snapped to the road network used as route start and end points
+              items:
+                type: object
+            uuid:
+              type: string
+              description: Unique identifier for this directions request, useful for feedback
+      400:
+        description: Invalid profile, coordinates, or query parameters
+      401:
+        description: Missing or invalid Mapbox access token
+      422:
+        description: Too many waypoints or unroutable coordinate pairs
+      429:
+        description: Rate limit exceeded
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The coordinates, profile, or query parameters are invalid or malformed
+      - code: 401
+        error: unauthorized
+        message: Invalid or missing access token
+        description: A valid MAPBOX_ACCESS_TOKEN environment variable is required
+      - code: 404
+        error: not_found
+        message: Profile not found
+        description: The specified routing profile does not exist
+      - code: 422
+        error: unprocessable_entity
+        message: Too many coordinates or unroutable waypoints
+        description: More than 25 waypoints were provided or the coordinates cannot be connected by a route
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The rate limit has been exceeded; check Retry-After header for backoff time
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on the Mapbox servers
+
+  search:
+    description: Search for places and points of interest with autocomplete suggestions using the Mapbox Search API
+    method: GET
+    path: /search/v1/suggest
+    parameters:
+      - name: q
+        type: string
+        in: query
+        required: true
+        description: Search query text to find place suggestions (supports partial input for autocomplete)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
+      - name: proximity
+        type: string
+        in: query
+        required: false
+        description: Bias results toward a geographic location, given as "longitude,latitude" or "ip"
+      - name: origin
+        type: string
+        in: query
+        required: false
+        description: Reference point for distance calculations in suggestions, given as "longitude,latitude"
+      - name: country
+        type: string
+        in: query
+        required: false
+        description: Restrict suggestions to one or more countries using ISO 3166-1 alpha-2 codes (comma-separated)
+      - name: language
+        type: string
+        in: query
+        required: false
+        description: IETF language code for the response language (e.g., en, fr, ja)
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        default: 5
+        description: Maximum number of suggestions to return (1–10)
+      - name: types
+        type: string
+        in: query
+        required: false
+        description: Filter results by feature type (comma-separated, e.g., "place,poi,address,street")
+      - name: bbox
+        type: string
+        in: query
+        required: false
+        description: Bounding box to restrict results, given as "min_lon,min_lat,max_lon,max_lat"
+      - name: session_token
+        type: string
+        in: query
+        required: false
+        description: UUID session token to group related suggest and retrieve calls for billing purposes
+    responses:
+      200:
+        description: Search suggestions response with an array of matching place candidates
+        schema:
+          type: object
+          properties:
+            suggestions:
+              type: array
+              description: Ordered list of place suggestions matching the query
+              items:
+                type: object
+            attribution:
+              type: string
+              description: Attribution text required when displaying Mapbox data
+            response_id:
+              type: string
+              description: Unique identifier for this search response, usable for analytics
+      400:
+        description: Missing required query parameter or malformed request
+      401:
+        description: Missing or invalid Mapbox access token
+      429:
+        description: Rate limit exceeded
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The query parameter is missing or the request parameters are malformed
+      - code: 401
+        error: unauthorized
+        message: Invalid or missing access token
+        description: A valid MAPBOX_ACCESS_TOKEN environment variable is required
+      - code: 404
+        error: not_found
+        message: Endpoint not found
+        description: The requested search endpoint does not exist
+      - code: 422
+        error: unprocessable_entity
+        message: Unable to process search query
+        description: The search query cannot be processed as submitted
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The rate limit has been exceeded; check Retry-After header for backoff time
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on the Mapbox servers

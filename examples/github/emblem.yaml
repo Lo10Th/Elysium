@@ -384,6 +384,85 @@ actions:
       404:
         description: Pull request not found
 
+  create-pr:
+    description: Create a new pull request in a repository
+    method: POST
+    path: /repos/{owner}/{repo}/pulls
+    parameters:
+      - name: owner
+        type: string
+        in: path
+        required: true
+        description: Repository owner
+      - name: repo
+        type: string
+        in: path
+        required: true
+        description: Repository name
+    requestBody:
+      description: Pull request data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          title:
+            type: string
+            required: true
+            description: Pull request title
+          head:
+            type: string
+            required: true
+            description: The name of the branch where your changes are implemented (the branch to merge from)
+          base:
+            type: string
+            required: true
+            description: The name of the branch you want the changes pulled into (the branch to merge into)
+          body:
+            type: string
+            required: false
+            description: Pull request body (Markdown)
+    responses:
+      201:
+        description: Created pull request
+        schema: PullRequest
+      422:
+        description: Validation failed
+
+  # ── Repositories (create) ─────────────────────────────────────────
+  create-repo:
+    description: Create a new repository for the authenticated user
+    method: POST
+    path: /user/repos
+    requestBody:
+      description: Repository data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Repository name
+          description:
+            type: string
+            required: false
+            description: Short description of the repository
+          private:
+            type: boolean
+            required: false
+            default: false
+            description: Whether the repository should be private
+          auto_init:
+            type: boolean
+            required: false
+            description: Whether to initialize the repository with a README
+    responses:
+      201:
+        description: Created repository
+        schema: Repository
+      422:
+        description: Validation failed
+
   # ── Users ─────────────────────────────────────────────────────────
   get-user:
     description: Get a user's public profile
@@ -412,3 +491,29 @@ actions:
         schema: User
       401:
         description: Requires authentication
+
+errors:
+  - code: 401
+    error: unauthorized
+    message: Authentication required
+    description: A valid GITHUB_TOKEN bearer token is required to access this endpoint
+  - code: 403
+    error: forbidden
+    message: Forbidden
+    description: The authenticated user does not have permission to perform this action
+  - code: 404
+    error: not_found
+    message: Resource not found
+    description: The requested resource does not exist
+  - code: 422
+    error: validation_failed
+    message: Validation failed
+    description: The request body contains invalid or conflicting fields
+  - code: 429
+    error: rate_limit_exceeded
+    message: Too many requests
+    description: GitHub API rate limit exceeded; check the Retry-After header and try again later
+  - code: 500
+    error: internal_error
+    message: Internal server error
+    description: An unexpected error occurred on the GitHub server

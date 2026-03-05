@@ -1,0 +1,387 @@
+apiVersion: v1
+name: linear
+version: 1.0.0
+description: Linear issue tracking API — create and manage issues, projects, and teams via GraphQL
+author: Elysium Team
+license: MIT
+homepage: https://developers.linear.app
+
+baseUrl: https://api.linear.app
+
+auth:
+  type: bearer
+  keyEnv: LINEAR_API_KEY
+
+tags:
+  - linear
+  - issue-tracking
+  - project-management
+  - graphql
+
+category: productivity
+
+types:
+  Issue:
+    description: A Linear issue
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique issue UUID
+      identifier:
+        type: string
+        required: true
+        description: Human-readable identifier (e.g. ENG-123)
+      title:
+        type: string
+        required: true
+        description: Issue title
+      description:
+        type: string
+        required: false
+        description: Issue description in Markdown format
+      priority:
+        type: integer
+        required: false
+        description: "Issue priority — 0: none, 1: urgent, 2: high, 3: medium, 4: low"
+      url:
+        type: string
+        required: true
+        description: URL to the issue in the Linear web app
+      createdAt:
+        type: string
+        required: true
+        description: ISO 8601 timestamp when the issue was created
+      updatedAt:
+        type: string
+        required: true
+        description: ISO 8601 timestamp when the issue was last updated
+
+  Project:
+    description: A Linear project
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique project UUID
+      name:
+        type: string
+        required: true
+        description: Project name
+      description:
+        type: string
+        required: false
+        description: Project description
+      state:
+        type: string
+        required: true
+        description: "Project state — e.g. planned, started, paused, completed, cancelled"
+      url:
+        type: string
+        required: true
+        description: URL to the project in the Linear web app
+      createdAt:
+        type: string
+        required: true
+        description: ISO 8601 timestamp when the project was created
+      updatedAt:
+        type: string
+        required: true
+        description: ISO 8601 timestamp when the project was last updated
+
+  Team:
+    description: A Linear team
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique team UUID
+      name:
+        type: string
+        required: true
+        description: Team name
+      key:
+        type: string
+        required: true
+        description: Short team key used as the prefix for issue identifiers (e.g. ENG)
+      description:
+        type: string
+        required: false
+        description: Team description
+
+actions:
+  list-issues:
+    description: List issues with optional filters for team, project, state, and priority
+    method: POST
+    path: /graphql
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: true
+            description: GraphQL query — use the issues query to retrieve a paginated list of issues
+          variables:
+            type: object
+            required: false
+            description: Query variables for filtering and pagination
+            properties:
+              first:
+                type: integer
+                required: false
+                description: Number of issues to return (default 50, max 250)
+              after:
+                type: string
+                required: false
+                description: Pagination cursor from the previous response pageInfo.endCursor
+              teamId:
+                type: string
+                required: false
+                description: Filter issues to a specific team by UUID
+              projectId:
+                type: string
+                required: false
+                description: Filter issues to a specific project by UUID
+              stateId:
+                type: string
+                required: false
+                description: Filter issues by workflow state UUID
+              priority:
+                type: integer
+                required: false
+                description: "Filter issues by priority — 0: none, 1: urgent, 2: high, 3: medium, 4: low"
+    responses:
+      200:
+        description: GraphQL response containing a paginated list of issues
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              description: Top-level GraphQL data envelope
+              properties:
+                issues:
+                  type: object
+                  description: Paginated issues connection
+                  properties:
+                    nodes:
+                      type: array
+                      description: Array of Issue objects returned for this page
+                    pageInfo:
+                      type: object
+                      description: Pagination metadata
+                      properties:
+                        hasNextPage:
+                          type: boolean
+                          description: True if more pages are available
+                        endCursor:
+                          type: string
+                          description: Cursor to pass as the after variable to fetch the next page
+      400:
+        description: GraphQL syntax error or invalid variables
+      401:
+        description: Invalid or missing API key
+
+  get-issue:
+    description: Get a single issue by its UUID or human-readable identifier
+    method: POST
+    path: /graphql
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: true
+            description: GraphQL query — use the issue(id:) query to fetch a single issue
+          variables:
+            type: object
+            required: true
+            description: Query variables
+            properties:
+              id:
+                type: string
+                required: true
+                description: Issue UUID or human-readable identifier (e.g. ENG-123)
+    responses:
+      200:
+        description: GraphQL response containing the issue details
+        schema:
+          type: object
+      404:
+        description: Issue not found
+      401:
+        description: Invalid or missing API key
+
+  create-issue:
+    description: Create a new issue in a Linear team
+    method: POST
+    path: /graphql
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: true
+            description: GraphQL mutation — use the issueCreate mutation
+          variables:
+            type: object
+            required: true
+            description: Mutation variables containing the issue creation input
+            properties:
+              input:
+                type: object
+                required: true
+                description: Issue creation payload
+                properties:
+                  teamId:
+                    type: string
+                    required: true
+                    description: UUID of the team to create the issue in
+                  title:
+                    type: string
+                    required: true
+                    description: Issue title
+                  description:
+                    type: string
+                    required: false
+                    description: Issue description in Markdown format
+                  priority:
+                    type: integer
+                    required: false
+                    description: "Issue priority — 0: none, 1: urgent, 2: high, 3: medium, 4: low"
+                  assigneeId:
+                    type: string
+                    required: false
+                    description: UUID of the user to assign the issue to
+                  projectId:
+                    type: string
+                    required: false
+                    description: UUID of the project to add the issue to
+    responses:
+      200:
+        description: GraphQL response with the created issue and a success flag
+        schema:
+          type: object
+      400:
+        description: Invalid mutation input or missing required fields
+      401:
+        description: Invalid or missing API key
+
+  update-issue:
+    description: Update an existing issue by its UUID
+    method: POST
+    path: /graphql
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: true
+            description: GraphQL mutation — use the issueUpdate mutation
+          variables:
+            type: object
+            required: true
+            description: Mutation variables containing the issue ID and update payload
+            properties:
+              id:
+                type: string
+                required: true
+                description: UUID of the issue to update
+              input:
+                type: object
+                required: true
+                description: Fields to update on the issue
+                properties:
+                  title:
+                    type: string
+                    required: false
+                    description: New issue title
+                  description:
+                    type: string
+                    required: false
+                    description: New issue description in Markdown format
+                  priority:
+                    type: integer
+                    required: false
+                    description: "New priority — 0: none, 1: urgent, 2: high, 3: medium, 4: low"
+                  stateId:
+                    type: string
+                    required: false
+                    description: UUID of the new workflow state
+                  assigneeId:
+                    type: string
+                    required: false
+                    description: UUID of the new assignee; omit this field entirely to leave the current assignee unchanged
+    responses:
+      200:
+        description: GraphQL response with the updated issue and a success flag
+        schema:
+          type: object
+      404:
+        description: Issue not found
+      401:
+        description: Invalid or missing API key
+
+  list-projects:
+    description: List all projects with optional team filter and pagination
+    method: POST
+    path: /graphql
+    requestBody:
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: true
+            description: GraphQL query — use the projects query to retrieve a paginated list of projects
+          variables:
+            type: object
+            required: false
+            description: Query variables for filtering and pagination
+            properties:
+              first:
+                type: integer
+                required: false
+                description: Number of projects to return (default 50, max 250)
+              after:
+                type: string
+                required: false
+                description: Pagination cursor from the previous response pageInfo.endCursor
+    responses:
+      200:
+        description: GraphQL response containing a paginated list of projects
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              description: Top-level GraphQL data envelope
+              properties:
+                projects:
+                  type: object
+                  description: Paginated projects connection
+                  properties:
+                    nodes:
+                      type: array
+                      description: Array of Project objects returned for this page
+                    pageInfo:
+                      type: object
+                      description: Pagination metadata
+                      properties:
+                        hasNextPage:
+                          type: boolean
+                          description: True if more pages are available
+                        endCursor:
+                          type: string
+                          description: Cursor to pass as the after variable to fetch the next page
+      401:
+        description: Invalid or missing API key

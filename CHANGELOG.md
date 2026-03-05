@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **OpenAI Emblem** - Chat completions (GPT-4, GPT-3.5-turbo), model listing, embeddings, and DALL-E image generation ([#109](https://github.com/Lo10Th/Elysium/pull/109))
+- **Anthropic Emblem** - Claude message creation and model listing with full parameter support ([#109](https://github.com/Lo10Th/Elysium/pull/109))
 - **Twilio API Emblem** - SMS and phone verification (`twilio` emblem with `send-sms`, `list-messages`, `get-message`, `verify-start`, `verify-check` actions)
 - **Vercel Emblem** - Deployments and project management for Vercel frontend cloud ([#113](https://github.com/Lo10Th/Elysium/pull/113))
 

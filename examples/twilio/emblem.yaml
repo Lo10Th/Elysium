@@ -1,0 +1,410 @@
+apiVersion: v1
+name: twilio
+version: 1.0.0
+description: Twilio API for sending SMS messages and verifying phone numbers via Twilio Messaging and Verify APIs
+author: Elysium Team
+license: MIT
+
+baseUrl: https://api.twilio.com/2010-04-01
+
+auth:
+  type: basic
+  keyEnv: TWILIO_CREDENTIALS
+
+tags:
+  - twilio
+  - sms
+  - messaging
+  - verification
+  - communication
+
+category: communication
+
+types:
+  Message:
+    description: A Twilio SMS/MMS message resource
+    properties:
+      sid:
+        type: string
+        required: true
+        description: Unique string identifier for the message (e.g. SMxxxxx)
+      account_sid:
+        type: string
+        required: false
+        description: SID of the Account that sent this message
+      to:
+        type: string
+        required: true
+        description: Phone number that received the message in E.164 format
+      from:
+        type: string
+        required: true
+        description: Phone number or sender ID that sent the message
+      body:
+        type: string
+        required: false
+        description: Text body of the message
+      status:
+        type: string
+        required: false
+        description: Current status of the message (queued, sending, sent, delivered, undelivered, failed)
+      direction:
+        type: string
+        required: false
+        description: Direction of the message (inbound, outbound-api, outbound-call, outbound-reply)
+      date_created:
+        type: string
+        required: false
+        description: Date and time the message was created in RFC 2822 format
+      date_sent:
+        type: string
+        required: false
+        description: Date and time the message was sent in RFC 2822 format
+      price:
+        type: string
+        required: false
+        description: Cost of the message as a decimal string (e.g. -0.00750)
+      price_unit:
+        type: string
+        required: false
+        description: Currency of the price field (e.g. USD)
+
+  Verification:
+    description: A Twilio Verify verification resource representing an in-progress phone verification
+    properties:
+      sid:
+        type: string
+        required: true
+        description: Unique string identifier for this verification
+      service_sid:
+        type: string
+        required: true
+        description: SID of the Verify service that created this verification
+      to:
+        type: string
+        required: true
+        description: Phone number being verified in E.164 format
+      channel:
+        type: string
+        required: false
+        description: Verification channel used (sms, call, or email)
+      status:
+        type: string
+        required: false
+        description: Current status of the verification (pending, approved, or canceled)
+      valid:
+        type: boolean
+        required: false
+        description: Whether the verification is currently valid
+
+  VerificationCheck:
+    description: Result of a verification code check submitted via Twilio Verify
+    properties:
+      sid:
+        type: string
+        required: false
+        description: Unique string identifier for the verification check
+      to:
+        type: string
+        required: true
+        description: Phone number that was verified in E.164 format
+      channel:
+        type: string
+        required: false
+        description: Channel used for verification (sms, call, or email)
+      status:
+        type: string
+        required: false
+        description: Result status of the verification check (approved, pending, or canceled)
+      valid:
+        type: boolean
+        required: true
+        description: Whether the OTP code provided was correct
+
+actions:
+  send-sms:
+    description: Send an SMS message to a phone number using the Twilio Messaging API
+    method: POST
+    path: /Accounts/{AccountSid}/Messages.json
+    parameters:
+      - name: AccountSid
+        type: string
+        in: path
+        required: true
+        description: Your Twilio Account SID (begins with AC)
+    requestBody:
+      description: SMS message parameters sent as form-encoded body
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          To:
+            type: string
+            required: true
+            description: Destination phone number in E.164 format (e.g. +15551234567)
+          From:
+            type: string
+            required: true
+            description: Your Twilio phone number or messaging service SID
+          Body:
+            type: string
+            required: true
+            description: Text body of the SMS message (max 1600 characters)
+    responses:
+      201:
+        description: Message created and queued for delivery
+        schema: Message
+      400:
+        description: Invalid request parameters
+      401:
+        description: Authentication failed - invalid Account SID or Auth Token
+      429:
+        description: Too many requests - rate limit exceeded
+      500:
+        description: Internal server error on Twilio's side
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The request contains invalid or missing parameters such as an invalid phone number format
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Invalid Account SID or Auth Token provided in the basic authentication credentials
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The request rate limit has been exceeded; wait before retrying
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on Twilio's servers
+
+  list-messages:
+    description: Retrieve a list of messages sent from or received by an account, with optional filters
+    method: GET
+    path: /Accounts/{AccountSid}/Messages.json
+    parameters:
+      - name: AccountSid
+        type: string
+        in: path
+        required: true
+        description: Your Twilio Account SID (begins with AC)
+      - name: To
+        type: string
+        in: query
+        required: false
+        description: Filter messages sent to this phone number (E.164 format)
+      - name: From
+        type: string
+        in: query
+        required: false
+        description: Filter messages sent from this phone number or sender ID
+      - name: DateSent
+        type: string
+        in: query
+        required: false
+        description: Filter messages sent on this date in YYYY-MM-DD format
+      - name: PageSize
+        type: integer
+        in: query
+        required: false
+        default: 50
+        description: Number of resources to return per page (1–1000, default 50)
+      - name: Page
+        type: integer
+        in: query
+        required: false
+        default: 0
+        description: Zero-indexed page number for pagination
+    responses:
+      200:
+        description: Paginated list of message resources wrapped in a JSON envelope containing a messages array
+        schema:
+          type: array
+          items: Message
+      401:
+        description: Authentication failed - invalid Account SID or Auth Token
+      429:
+        description: Too many requests - rate limit exceeded
+      500:
+        description: Internal server error on Twilio's side
+    errors:
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Invalid Account SID or Auth Token provided in the basic authentication credentials
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The request rate limit has been exceeded; wait before retrying
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on Twilio's servers
+
+  get-message:
+    description: Retrieve the details of a specific message resource by its SID
+    method: GET
+    path: /Accounts/{AccountSid}/Messages/{MessageSid}.json
+    parameters:
+      - name: AccountSid
+        type: string
+        in: path
+        required: true
+        description: Your Twilio Account SID (begins with AC)
+      - name: MessageSid
+        type: string
+        in: path
+        required: true
+        description: Unique SID of the message to retrieve (begins with SM or MM)
+    responses:
+      200:
+        description: Message resource details
+        schema: Message
+      401:
+        description: Authentication failed - invalid Account SID or Auth Token
+      404:
+        description: Message not found - the MessageSid does not exist
+      429:
+        description: Too many requests - rate limit exceeded
+      500:
+        description: Internal server error on Twilio's side
+    errors:
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Invalid Account SID or Auth Token provided in the basic authentication credentials
+      - code: 404
+        error: not_found
+        message: Resource not found
+        description: No message found with the specified MessageSid
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The request rate limit has been exceeded; wait before retrying
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on Twilio's servers
+
+  verify-start:
+    description: "Start phone verification via Twilio Verify API. IMPORTANT: This action uses a different base URL — https://verify.twilio.com/v2 — not the emblem baseUrl"
+    method: POST
+    path: /Services/{ServiceSid}/Verifications
+    parameters:
+      - name: ServiceSid
+        type: string
+        in: path
+        required: true
+        description: SID of the Twilio Verify service (begins with VA)
+    requestBody:
+      description: Verification request parameters sent as form-encoded body
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          To:
+            type: string
+            required: true
+            description: Phone number or email to verify in E.164 format (e.g. +15551234567)
+          Channel:
+            type: string
+            required: true
+            description: Verification channel to use (sms, call, or email)
+    responses:
+      201:
+        description: Verification initiated and OTP sent to the recipient
+        schema: Verification
+      400:
+        description: Invalid request parameters
+      401:
+        description: Authentication failed - invalid Account SID or Auth Token
+      404:
+        description: Verify service not found - ServiceSid does not exist
+      429:
+        description: Too many requests - rate limit exceeded
+      500:
+        description: Internal server error on Twilio's side
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The request contains invalid parameters such as an unsupported channel type
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Invalid Account SID or Auth Token provided in the basic authentication credentials
+      - code: 404
+        error: not_found
+        message: Resource not found
+        description: No Verify service found with the specified ServiceSid
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The request rate limit has been exceeded; wait before retrying
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on Twilio's servers
+
+  verify-check:
+    description: "Check a verification OTP code via Twilio Verify API. IMPORTANT: This action uses a different base URL — https://verify.twilio.com/v2 — not the emblem baseUrl"
+    method: POST
+    path: /Services/{ServiceSid}/VerificationCheck
+    parameters:
+      - name: ServiceSid
+        type: string
+        in: path
+        required: true
+        description: SID of the Twilio Verify service (begins with VA)
+    requestBody:
+      description: Verification check parameters sent as form-encoded body
+      contentType: application/x-www-form-urlencoded
+      schema:
+        type: object
+        properties:
+          To:
+            type: string
+            required: true
+            description: Phone number being verified in E.164 format (e.g. +15551234567)
+          Code:
+            type: string
+            required: true
+            description: OTP code entered by the user to verify
+    responses:
+      200:
+        description: Verification check result indicating if the code was correct
+        schema: VerificationCheck
+      400:
+        description: Invalid request parameters
+      401:
+        description: Authentication failed - invalid Account SID or Auth Token
+      404:
+        description: Verification not found or expired
+      429:
+        description: Too many requests - rate limit exceeded
+      500:
+        description: Internal server error on Twilio's side
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request parameters
+        description: The request contains invalid parameters such as a missing or malformed OTP code
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Invalid Account SID or Auth Token provided in the basic authentication credentials
+      - code: 404
+        error: not_found
+        message: Resource not found
+        description: No active verification found for the specified phone number and service
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: The request rate limit has been exceeded; wait before retrying
+      - code: 500
+        error: internal_error
+        message: Internal server error
+        description: An unexpected error occurred on Twilio's servers
+

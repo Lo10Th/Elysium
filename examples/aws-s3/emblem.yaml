@@ -1,0 +1,237 @@
+apiVersion: v1
+name: aws-s3
+version: 1.0.0
+description: AWS Simple Storage Service (S3) API for managing cloud storage buckets and objects. Requires AWS Signature Version 4 signing.
+author: Elysium Team
+license: MIT
+homepage: https://docs.aws.amazon.com/s3/
+
+baseUrl: https://s3.amazonaws.com
+
+auth:
+  type: api_key
+  keyEnv: AWS_ACCESS_KEY_ID
+  header: Authorization
+
+tags:
+  - aws
+  - s3
+  - storage
+  - cloud
+
+category: storage
+
+types:
+  Owner:
+    description: An AWS account owner associated with a bucket or object
+    properties:
+      id:
+        type: string
+        required: true
+        description: The canonical user ID of the owner
+      display_name:
+        type: string
+        required: false
+        description: The display name of the owner account
+
+  Bucket:
+    description: An S3 bucket used to store objects in the cloud
+    properties:
+      name:
+        type: string
+        required: true
+        description: The globally unique name of the bucket
+      creation_date:
+        type: string
+        required: false
+        description: The date and time the bucket was created (ISO 8601)
+      owner:
+        type: object
+        required: false
+        description: The AWS account that owns the bucket
+        properties:
+          id:
+            type: string
+            required: true
+            description: The canonical user ID of the owner
+          display_name:
+            type: string
+            required: false
+            description: The display name of the owner account
+
+  S3Object:
+    description: An object stored within an S3 bucket
+    properties:
+      key:
+        type: string
+        required: true
+        description: The object key (path and filename within the bucket)
+      size:
+        type: integer
+        required: false
+        description: The size of the object in bytes
+      last_modified:
+        type: string
+        required: false
+        description: The last modified timestamp of the object (ISO 8601)
+      etag:
+        type: string
+        required: false
+        description: The entity tag (ETag) which is an MD5 hash of the object data
+      storage_class:
+        type: string
+        required: false
+        description: The storage class of the object (e.g. STANDARD, GLACIER)
+
+actions:
+  list-buckets:
+    description: List all S3 buckets owned by the authenticated AWS account
+    method: GET
+    path: /
+    responses:
+      200:
+        description: A list of S3 buckets owned by the account
+        schema:
+          type: array
+          items: Bucket
+
+  create-bucket:
+    description: Create a new S3 bucket with the specified globally unique name
+    method: PUT
+    path: /{bucket}
+    parameters:
+      - name: bucket
+        type: string
+        in: path
+        required: true
+        description: The globally unique name for the new S3 bucket
+    requestBody:
+      description: Optional bucket configuration including region constraints
+      contentType: application/xml
+      schema:
+        type: object
+        properties:
+          location_constraint:
+            type: string
+            required: false
+            description: The AWS region where the bucket should be created
+    responses:
+      200:
+        description: Bucket created successfully
+      400:
+        description: Invalid bucket name or malformed configuration
+      409:
+        description: Bucket name already exists or conflicts with another bucket
+
+  list-objects:
+    description: List objects in a bucket with optional prefix, pagination, and filtering
+    method: GET
+    path: /{bucket}
+    parameters:
+      - name: bucket
+        type: string
+        in: path
+        required: true
+        description: The name of the S3 bucket to list objects from
+      - name: list-type
+        type: integer
+        in: query
+        required: false
+        default: 2
+        description: API version for listing (use 2 for ListObjectsV2)
+      - name: prefix
+        type: string
+        in: query
+        required: false
+        description: Filters results to keys that begin with this prefix
+      - name: max-keys
+        type: integer
+        in: query
+        required: false
+        default: 1000
+        description: Maximum number of objects to return per request (1-1000)
+      - name: continuation-token
+        type: string
+        in: query
+        required: false
+        description: Token from a previous response to retrieve the next page of results
+    responses:
+      200:
+        description: A paginated list of objects within the specified bucket
+        schema:
+          type: array
+          items: S3Object
+      404:
+        description: The specified bucket does not exist
+
+  upload-object:
+    description: Upload a file or object to a specified S3 bucket and key path
+    method: PUT
+    path: /{bucket}/{key}
+    parameters:
+      - name: bucket
+        type: string
+        in: path
+        required: true
+        description: The name of the destination S3 bucket
+      - name: key
+        type: string
+        in: path
+        required: true
+        description: The object key (path and filename) to store the object under
+    requestBody:
+      description: The binary file content to upload to S3
+      contentType: application/octet-stream
+      schema:
+        type: string
+    responses:
+      200:
+        description: Object uploaded successfully to the bucket
+      400:
+        description: Invalid request parameters or object configuration
+      404:
+        description: The specified bucket does not exist
+
+  download-object:
+    description: Download a file or object from a specified S3 bucket and key
+    method: GET
+    path: /{bucket}/{key}
+    parameters:
+      - name: bucket
+        type: string
+        in: path
+        required: true
+        description: The name of the S3 bucket containing the object
+      - name: key
+        type: string
+        in: path
+        required: true
+        description: The object key (path and filename) of the object to download
+    responses:
+      200:
+        description: The binary content of the requested object
+        schema:
+          type: string
+      404:
+        description: The specified bucket or object does not exist
+
+  delete-object:
+    description: Permanently delete an object from a specified S3 bucket
+    method: DELETE
+    path: /{bucket}/{key}
+    parameters:
+      - name: bucket
+        type: string
+        in: path
+        required: true
+        description: The name of the S3 bucket containing the object
+      - name: key
+        type: string
+        in: path
+        required: true
+        description: The object key (path and filename) of the object to delete
+    responses:
+      204:
+        description: Object deleted successfully
+      404:
+        description: The specified bucket or object does not exist

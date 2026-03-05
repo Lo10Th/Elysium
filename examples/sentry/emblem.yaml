@@ -1,0 +1,286 @@
+apiVersion: v1
+name: sentry
+version: 1.0.0
+description: Sentry error tracking API — issues, projects, and organization management
+author: Elysium Team
+license: MIT
+
+baseUrl: https://sentry.io/api/0
+
+auth:
+  type: bearer
+  keyEnv: SENTRY_AUTH_TOKEN
+
+tags:
+  - sentry
+  - error-tracking
+  - monitoring
+  - devtools
+
+category: infrastructure
+
+types:
+  Issue:
+    description: A Sentry error issue representing a grouped set of error events
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique issue ID
+      shortId:
+        type: string
+        required: true
+        description: Human-readable short ID (e.g. PROJECT-123)
+      title:
+        type: string
+        required: true
+        description: Issue title derived from the error message
+      culprit:
+        type: string
+        required: false
+        description: The code location or function that caused the issue
+      permalink:
+        type: string
+        required: false
+        description: Absolute URL to the issue in the Sentry UI
+      logger:
+        type: string
+        required: false
+        description: Logger name associated with the issue
+      level:
+        type: string
+        required: false
+        description: "Severity level: fatal, error, warning, info, or debug"
+      status:
+        type: string
+        required: true
+        description: "Issue status: resolved, unresolved, or ignored"
+      count:
+        type: integer
+        required: false
+        description: Number of times this issue has occurred
+      userCount:
+        type: integer
+        required: false
+        description: Number of unique users affected
+      firstSeen:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the issue was first seen
+      lastSeen:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the issue was last seen
+      project:
+        type: object
+        required: false
+        description: The project this issue belongs to
+        properties:
+          id:
+            type: string
+            required: true
+            description: Project ID
+          name:
+            type: string
+            required: true
+            description: Project name
+          slug:
+            type: string
+            required: true
+            description: Project slug
+
+  Project:
+    description: A Sentry project within an organization
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique project ID
+      slug:
+        type: string
+        required: true
+        description: URL-safe project identifier
+      name:
+        type: string
+        required: true
+        description: Human-readable project name
+      platform:
+        type: string
+        required: false
+        description: Primary platform or language (e.g. python, javascript)
+      dateCreated:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the project was created
+      isPublic:
+        type: boolean
+        required: false
+        description: Whether the project is publicly accessible
+      organization:
+        type: object
+        required: false
+        description: The organization this project belongs to
+        properties:
+          id:
+            type: string
+            required: true
+            description: Organization ID
+          name:
+            type: string
+            required: true
+            description: Organization name
+          slug:
+            type: string
+            required: true
+            description: Organization slug
+
+actions:
+  list-issues:
+    description: List error issues for a project within an organization
+    method: GET
+    path: /organizations/{organization_slug}/issues/
+    parameters:
+      - name: organization_slug
+        type: string
+        in: path
+        required: true
+        description: The slug of the organization to query
+      - name: project
+        type: integer
+        in: query
+        required: false
+        description: Filter by project ID (integer project ID from list-projects)
+      - name: environment
+        type: string
+        in: query
+        required: false
+        description: Filter by environment name (e.g. production, staging)
+      - name: query
+        type: string
+        in: query
+        required: false
+        description: Search query string to filter issues (e.g. "is:unresolved")
+      - name: statsPeriod
+        type: string
+        in: query
+        required: false
+        description: "Time period for stats aggregation (e.g. 24h, 14d)"
+      - name: cursor
+        type: string
+        in: query
+        required: false
+        description: Pagination cursor from a previous response
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Maximum number of issues to return (max 100)
+    responses:
+      200:
+        description: List of issues matching the query
+        schema:
+          type: array
+          items: Issue
+      401:
+        description: Authentication required or token is invalid
+      403:
+        description: Insufficient permissions for this organization
+      404:
+        description: Organization not found
+
+  get-issue:
+    description: Get detailed information about a specific issue by its ID
+    method: GET
+    path: /issues/{issue_id}/
+    parameters:
+      - name: issue_id
+        type: string
+        in: path
+        required: true
+        description: The ID of the issue to retrieve
+    responses:
+      200:
+        description: Issue details
+        schema: Issue
+      401:
+        description: Authentication required or token is invalid
+      403:
+        description: Insufficient permissions to view this issue
+      404:
+        description: Issue not found
+
+  list-projects:
+    description: List all projects for an organization
+    method: GET
+    path: /organizations/{organization_slug}/projects/
+    parameters:
+      - name: organization_slug
+        type: string
+        in: path
+        required: true
+        description: The slug of the organization to query
+      - name: cursor
+        type: string
+        in: query
+        required: false
+        description: Pagination cursor from a previous response
+    responses:
+      200:
+        description: List of projects in the organization
+        schema:
+          type: array
+          items: Project
+      401:
+        description: Authentication required or token is invalid
+      403:
+        description: Insufficient permissions for this organization
+      404:
+        description: Organization not found
+
+  create-project:
+    description: Create a new project within a team in an organization
+    method: POST
+    path: /teams/{organization_slug}/{team_slug}/projects/
+    parameters:
+      - name: organization_slug
+        type: string
+        in: path
+        required: true
+        description: The slug of the organization
+      - name: team_slug
+        type: string
+        in: path
+        required: true
+        description: The slug of the team to create the project under
+    requestBody:
+      description: Project creation payload
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Human-readable name for the new project
+          slug:
+            type: string
+            required: false
+            description: URL-safe identifier (auto-generated from name if omitted)
+          platform:
+            type: string
+            required: false
+            description: Primary platform or language (e.g. python, javascript, node)
+    responses:
+      201:
+        description: Project created successfully
+        schema: Project
+      400:
+        description: Invalid request parameters or project name already taken
+      401:
+        description: Authentication required or token is invalid
+      403:
+        description: Insufficient permissions to create projects in this team
+      404:
+        description: Organization or team not found
+
+

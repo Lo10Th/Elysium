@@ -90,6 +90,54 @@ ely clothing-shop create-order \
   --items '[{"product_id": 1, "quantity": 2}]'
 ```
 
+### Stripe Payments Example
+
+Use Stripe's test mode keys (prefixed with `sk_test_`) to try the Stripe emblem safely without real charges.
+
+```bash
+# Pull the Stripe emblem
+ely pull stripe
+
+# Set your Stripe test API key
+export STRIPE_API_KEY=sk_test_...
+
+# List customers
+ely stripe list-customers
+
+# List customers filtered by email
+ely stripe list-customers --email "customer@example.com"
+
+# Create a customer
+ely stripe create-customer \
+  --email "customer@example.com" \
+  --name "Jane Doe"
+
+# Retrieve a specific customer
+ely stripe get-customer --id cus_xyz
+
+# Create a PaymentIntent for $10.00 USD
+ely stripe create-payment-intent \
+  --amount 1000 \
+  --currency usd \
+  --customer cus_xyz
+
+# List PaymentIntents for a customer
+ely stripe list-payment-intents --customer cus_xyz
+
+# Confirm a PaymentIntent with a test payment method
+ely stripe confirm-payment-intent \
+  --id pi_xyz \
+  --payment_method pm_card_visa
+
+# List charges
+ely stripe list-charges --customer cus_xyz
+
+# Retrieve a specific charge
+ely stripe get-charge --id ch_xyz
+```
+
+> **Test mode tip**: Stripe test keys start with `sk_test_`. Use test card numbers (e.g. `4242424242424242`) and Stripe's test payment methods (e.g. `pm_card_visa`) to exercise the full payment flow without real charges. See [Stripe testing docs](https://stripe.com/docs/testing) for details.
+
 ### Authentication Flow
 
 ```bash

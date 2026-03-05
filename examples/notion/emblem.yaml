@@ -1,0 +1,379 @@
+apiVersion: v1
+name: notion
+version: 1.0.0
+description: >-
+  Notion API for creating and managing pages, databases, and workspace content.
+  Requires the Notion-Version header (e.g., 2022-06-28) on all requests for API versioning.
+author: Elysium Team
+license: MIT
+homepage: https://developers.notion.com
+
+baseUrl: https://api.notion.com/v1
+
+auth:
+  type: bearer
+  keyEnv: NOTION_API_KEY
+  header: Authorization
+  prefix: "Bearer "
+
+tags:
+  - notion
+  - productivity
+  - notes
+  - workspace
+  - api
+
+category: productivity
+
+types:
+  Page:
+    description: A Notion page object with metadata and property values
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique identifier of the page (UUID format)
+      url:
+        type: string
+        required: false
+        description: Public URL to access the page in Notion
+      created_time:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the page was created
+      last_edited_time:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the page was last edited
+      archived:
+        type: boolean
+        required: false
+        description: Whether the page has been archived
+      properties:
+        type: object
+        required: false
+        description: Page property values keyed by property name (schema depends on parent database)
+
+  Parent:
+    description: Parent reference indicating where a page lives in the Notion hierarchy
+    properties:
+      type:
+        type: string
+        required: true
+        description: Parent type; one of database_id, page_id, or workspace
+      database_id:
+        type: string
+        required: false
+        description: UUID of the parent database when type is database_id
+      page_id:
+        type: string
+        required: false
+        description: UUID of the parent page when type is page_id
+
+  SearchResult:
+    description: Paginated list result returned by the Notion search and database query endpoints
+    properties:
+      object:
+        type: string
+        required: true
+        description: Object type identifier, always the value list
+      results:
+        type: array
+        required: true
+        description: Array of matched Notion objects such as pages or databases
+        items:
+          type: object
+      next_cursor:
+        type: string
+        required: false
+        description: Opaque pagination cursor for the next page of results; null when exhausted
+      has_more:
+        type: boolean
+        required: true
+        description: True when additional results exist beyond the current page
+
+actions:
+  create-page:
+    description: Create a new page inside a Notion database or as a child of an existing page
+    method: POST
+    path: /pages
+    requestBody:
+      description: Parent reference, page property values, and optional initial block content
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          parent:
+            type: object
+            required: true
+            description: Parent reference containing either database_id or page_id
+            properties:
+              database_id:
+                type: string
+                required: false
+                description: UUID of the parent database
+              page_id:
+                type: string
+                required: false
+                description: UUID of the parent page
+          properties:
+            type: object
+            required: true
+            description: Property values for the new page matching the parent database schema
+          children:
+            type: array
+            required: false
+            description: Optional list of block objects for the initial page body content
+    responses:
+      200:
+        description: Newly created page object with all metadata and applied properties
+        schema: Page
+    errors:
+      - code: 400
+        error: validation_error
+        message: Invalid request body
+        description: The request body is malformed or missing required fields
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: A valid Bearer token must be provided in the Authorization header
+      - code: 403
+        error: restricted_resource
+        message: Access forbidden
+        description: The integration lacks permission to create content in the specified parent
+      - code: 404
+        error: object_not_found
+        message: Parent not found
+        description: The specified parent database or page does not exist or is not shared with this integration
+      - code: 429
+        error: rate_limited
+        message: Too many requests
+        description: API rate limit exceeded; inspect the Retry-After header before retrying
+      - code: 500
+        error: internal_server_error
+        message: Internal server error
+        description: An unexpected error occurred on Notion servers
+
+  list-pages:
+    description: Query a Notion database to list its pages with optional filters, sorts, and pagination
+    method: POST
+    path: /databases/{database_id}/query
+    parameters:
+      - name: database_id
+        type: string
+        in: path
+        required: true
+        description: UUID of the Notion database to query
+    requestBody:
+      description: Optional filter conditions, sort criteria, and pagination cursor for the query
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          filter:
+            type: object
+            required: false
+            description: Filter object to narrow results by property values
+          sorts:
+            type: array
+            required: false
+            description: Array of sort criteria objects to order the query results
+          start_cursor:
+            type: string
+            required: false
+            description: Pagination cursor obtained from next_cursor in a previous response
+          page_size:
+            type: integer
+            required: false
+            default: 100
+            description: Number of pages to return per request; maximum value is 100
+    responses:
+      200:
+        description: Paginated list of pages contained in the queried database
+        schema: SearchResult
+    errors:
+      - code: 400
+        error: validation_error
+        message: Invalid filter or sort
+        description: The query body contains invalid filter conditions or sort criteria
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: A valid Bearer token must be provided in the Authorization header
+      - code: 403
+        error: restricted_resource
+        message: Access forbidden
+        description: The integration does not have access to this database
+      - code: 404
+        error: object_not_found
+        message: Database not found
+        description: The specified database does not exist or is not shared with this integration
+      - code: 429
+        error: rate_limited
+        message: Too many requests
+        description: API rate limit exceeded; inspect the Retry-After header before retrying
+      - code: 500
+        error: internal_server_error
+        message: Internal server error
+        description: An unexpected error occurred on Notion servers
+
+  get-page:
+    description: Retrieve a Notion page and all its property values by page ID
+    method: GET
+    path: /pages/{page_id}
+    parameters:
+      - name: page_id
+        type: string
+        in: path
+        required: true
+        description: UUID of the Notion page to retrieve
+    responses:
+      200:
+        description: Full page object including metadata, parent reference, and property values
+        schema: Page
+    errors:
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: A valid Bearer token must be provided in the Authorization header
+      - code: 403
+        error: restricted_resource
+        message: Access forbidden
+        description: The integration does not have permission to view this page
+      - code: 404
+        error: object_not_found
+        message: Page not found
+        description: The specified page does not exist or is not shared with this integration
+      - code: 429
+        error: rate_limited
+        message: Too many requests
+        description: API rate limit exceeded; inspect the Retry-After header before retrying
+      - code: 500
+        error: internal_server_error
+        message: Internal server error
+        description: An unexpected error occurred on Notion servers
+
+  update-page:
+    description: Update properties or archive and restore a Notion page by its page ID
+    method: PATCH
+    path: /pages/{page_id}
+    parameters:
+      - name: page_id
+        type: string
+        in: path
+        required: true
+        description: UUID of the Notion page to update
+    requestBody:
+      description: Fields to update on the page; all fields are optional in a PATCH request
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          properties:
+            type: object
+            required: false
+            description: Updated property values matching the parent database schema
+          archived:
+            type: boolean
+            required: false
+            description: Pass true to archive the page or false to restore an archived page
+    responses:
+      200:
+        description: Updated page object reflecting all applied changes
+        schema: Page
+    errors:
+      - code: 400
+        error: validation_error
+        message: Invalid request body
+        description: The request body contains invalid or unrecognized fields
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: A valid Bearer token must be provided in the Authorization header
+      - code: 403
+        error: restricted_resource
+        message: Access forbidden
+        description: The integration does not have permission to update this page
+      - code: 404
+        error: object_not_found
+        message: Page not found
+        description: The specified page does not exist or is not shared with this integration
+      - code: 429
+        error: rate_limited
+        message: Too many requests
+        description: API rate limit exceeded; inspect the Retry-After header before retrying
+      - code: 500
+        error: internal_server_error
+        message: Internal server error
+        description: An unexpected error occurred on Notion servers
+
+  search:
+    description: Search all Notion pages and databases the integration can access by title keyword
+    method: POST
+    path: /search
+    requestBody:
+      description: Optional query text, object type filter, sort order, and pagination options
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          query:
+            type: string
+            required: false
+            description: Text to search for in page and database titles
+          filter:
+            type: object
+            required: false
+            description: Restricts results to a specific object type such as page or database
+            properties:
+              value:
+                type: string
+                required: true
+                description: Object type to include; either page or database
+              property:
+                type: string
+                required: true
+                description: Property to filter on; must be the string object
+          sort:
+            type: object
+            required: false
+            description: Sort order applied to the search results
+            properties:
+              direction:
+                type: string
+                required: true
+                description: Sort direction; either ascending or descending
+              timestamp:
+                type: string
+                required: true
+                description: Timestamp property to sort by; use last_edited_time
+          start_cursor:
+            type: string
+            required: false
+            description: Pagination cursor obtained from next_cursor in a previous search response
+          page_size:
+            type: integer
+            required: false
+            default: 100
+            description: Number of results to return per request; maximum value is 100
+    responses:
+      200:
+        description: Paginated search results containing matching Notion pages and databases
+        schema: SearchResult
+    errors:
+      - code: 400
+        error: validation_error
+        message: Invalid search parameters
+        description: The search request body contains invalid or malformed parameters
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: A valid Bearer token must be provided in the Authorization header
+      - code: 429
+        error: rate_limited
+        message: Too many requests
+        description: API rate limit exceeded; inspect the Retry-After header before retrying
+      - code: 500
+        error: internal_server_error
+        message: Internal server error
+        description: An unexpected error occurred on Notion servers

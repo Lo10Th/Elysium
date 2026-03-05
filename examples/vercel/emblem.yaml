@@ -1,0 +1,314 @@
+apiVersion: v1
+name: vercel
+version: 1.0.0
+description: Vercel REST API — deployments, projects, and infrastructure management for frontend cloud hosting
+author: Elysium Team
+license: MIT
+
+baseUrl: https://api.vercel.com
+
+auth:
+  type: bearer
+  keyEnv: VERCEL_TOKEN
+
+tags:
+  - vercel
+  - deployments
+  - infrastructure
+  - hosting
+  - devtools
+
+category: infrastructure
+
+types:
+  Deployment:
+    description: A Vercel deployment instance
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique deployment identifier
+      url:
+        type: string
+        required: true
+        description: Public URL of the deployment (e.g. my-app-abc123.vercel.app)
+      name:
+        type: string
+        required: true
+        description: Name of the deployment, typically the project name
+      state:
+        type: string
+        required: true
+        description: Current deployment state (QUEUED, BUILDING, INITIALIZING, READY, ERROR, or CANCELED — see README for descriptions)
+      projectId:
+        type: string
+        required: true
+        description: ID of the project this deployment belongs to
+      createdAt:
+        type: integer
+        required: true
+        description: Unix timestamp (milliseconds) when the deployment was created
+      readyAt:
+        type: integer
+        required: false
+        description: Unix timestamp (milliseconds) when the deployment reached READY state
+
+  Project:
+    description: A Vercel project grouping deployments
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique project identifier
+      name:
+        type: string
+        required: true
+        description: Project name (used in deployment URLs)
+      accountId:
+        type: string
+        required: true
+        description: ID of the account that owns this project
+      framework:
+        type: string
+        required: false
+        description: Detected or configured framework (e.g. nextjs, vite, create-react-app)
+      createdAt:
+        type: integer
+        required: true
+        description: Unix timestamp (milliseconds) when the project was created
+      updatedAt:
+        type: integer
+        required: true
+        description: Unix timestamp (milliseconds) when the project was last updated
+      latestDeployments:
+        type: array
+        required: false
+        description: Most recent deployments for this project
+        items: Deployment
+
+actions:
+  # ── Deployments ───────────────────────────────────────────────────
+  list-deployments:
+    description: List deployments, optionally filtered by project or team
+    method: GET
+    path: /v6/deployments
+    parameters:
+      - name: projectId
+        type: string
+        in: query
+        required: false
+        description: Filter deployments by project ID or name
+      - name: teamId
+        type: string
+        in: query
+        required: false
+        description: Filter deployments by team ID (for team accounts)
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Maximum number of deployments to return (default 20, max 100)
+        default: 20
+      - name: state
+        type: string
+        in: query
+        required: false
+        description: Filter by deployment state
+        enum:
+          - QUEUED
+          - BUILDING
+          - INITIALIZING
+          - READY
+          - ERROR
+          - CANCELED
+    responses:
+      200:
+        description: Paginated list of deployments
+        schema:
+          type: object
+          properties:
+            deployments:
+              type: array
+              items: Deployment
+            pagination:
+              type: object
+      401:
+        description: Invalid or missing authentication token
+      403:
+        description: Token does not have permission to list deployments
+
+  create-deployment:
+    description: Create and trigger a new Vercel deployment from a Git repository or file set
+    method: POST
+    path: /v13/deployments
+    parameters:
+      - name: teamId
+        type: string
+        in: query
+        required: false
+        description: Team ID to create the deployment under (for team accounts)
+    requestBody:
+      description: Deployment configuration
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Deployment name, usually the project name
+          gitSource:
+            type: object
+            required: false
+            description: Git source to deploy from (repo, branch, or commit)
+            properties:
+              type:
+                type: string
+                required: true
+                description: Git provider type (github, gitlab, or bitbucket)
+              repoId:
+                type: string
+                required: true
+                description: Repository ID from the Git provider
+              ref:
+                type: string
+                required: false
+                description: Branch, tag, or commit SHA to deploy (defaults to default branch)
+          project:
+            type: string
+            required: false
+            description: Project ID or name to associate the deployment with
+          target:
+            type: string
+            required: false
+            description: Deployment target environment (production or preview)
+    responses:
+      200:
+        description: Deployment created successfully
+        schema: Deployment
+      400:
+        description: Invalid request body or missing required fields
+      401:
+        description: Invalid or missing authentication token
+      403:
+        description: Token does not have permission to create deployments
+
+  get-deployment:
+    description: Get the current status and details of a deployment by its ID
+    method: GET
+    path: /v13/deployments/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: Unique deployment ID (e.g. dpl_abc123)
+      - name: teamId
+        type: string
+        in: query
+        required: false
+        description: Team ID that owns the deployment (for team accounts)
+    responses:
+      200:
+        description: Full deployment details including current state
+        schema: Deployment
+      401:
+        description: Invalid or missing authentication token
+      404:
+        description: Deployment not found
+
+  # ── Projects ──────────────────────────────────────────────────────
+  list-projects:
+    description: List all Vercel projects for the authenticated account or team
+    method: GET
+    path: /v9/projects
+    parameters:
+      - name: teamId
+        type: string
+        in: query
+        required: false
+        description: Team ID to list projects for (for team accounts)
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Maximum number of projects to return (default 20, max 100)
+        default: 20
+      - name: search
+        type: string
+        in: query
+        required: false
+        description: Filter projects by name prefix
+    responses:
+      200:
+        description: Paginated list of projects
+        schema:
+          type: object
+          properties:
+            projects:
+              type: array
+              items: Project
+            pagination:
+              type: object
+      401:
+        description: Invalid or missing authentication token
+
+  create-project:
+    description: Create a new Vercel project linked to a Git repository
+    method: POST
+    path: /v10/projects
+    parameters:
+      - name: teamId
+        type: string
+        in: query
+        required: false
+        description: Team ID to create the project under (for team accounts)
+    requestBody:
+      description: Project configuration
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Unique project name within the account or team
+          framework:
+            type: string
+            required: false
+            description: Framework preset for build settings (e.g. nextjs, vite, create-react-app)
+          gitRepository:
+            type: object
+            required: false
+            description: Git repository to link to the project
+            properties:
+              type:
+                type: string
+                required: true
+                description: Git provider (github, gitlab, or bitbucket)
+              repo:
+                type: string
+                required: true
+                description: Repository path in owner/repo format
+          buildCommand:
+            type: string
+            required: false
+            description: Custom build command (overrides framework default)
+          outputDirectory:
+            type: string
+            required: false
+            description: Custom output directory for build artifacts
+          rootDirectory:
+            type: string
+            required: false
+            description: Root directory of the project within the repository
+    responses:
+      200:
+        description: Newly created project details
+        schema: Project
+      400:
+        description: Invalid request body or project name already taken
+      401:
+        description: Invalid or missing authentication token
+      403:
+        description: Token does not have permission to create projects

@@ -4,7 +4,14 @@
   "title": "Emblem Definition",
   "description": "Schema for Elysium API emblem definitions",
   "type": "object",
-  "required": ["apiVersion", "name", "version", "description", "baseUrl", "actions"],
+  "required": [
+    "apiVersion",
+    "name",
+    "version",
+    "description",
+    "baseUrl",
+    "actions"
+  ],
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
@@ -101,22 +108,54 @@
         "$ref": "#/definitions/action"
       },
       "description": "Available API actions"
+    },
+    "errors": {
+      "description": "List of error responses this API may return",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/errorDefinition"
+      }
     }
   },
   "definitions": {
     "auth": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": false,
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["none", "api_key", "bearer", "basic", "oauth2"],
+          "enum": [
+            "none",
+            "api_key",
+            "bearer",
+            "basic",
+            "oauth2"
+          ],
           "description": "Authentication type"
         },
         "keyEnv": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Environment variable name containing the API key or token"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "List of environment variable names required for authentication"
+            }
+          ],
+          "description": "Environment variable name(s) containing the API key or token"
+        },
+        "description": {
           "type": "string",
-          "description": "Environment variable name containing the API key or token"
+          "description": "Description of the authentication mechanism and any requirements"
         },
         "header": {
           "type": "string",
@@ -130,7 +169,9 @@
     },
     "typeDefinition": {
       "type": "object",
-      "required": ["properties"],
+      "required": [
+        "properties"
+      ],
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -147,12 +188,21 @@
     },
     "property": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": false,
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["string", "integer", "number", "boolean", "array", "object"],
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object"
+          ],
           "description": "Data type"
         },
         "description": {
@@ -183,12 +233,23 @@
           "additionalProperties": {
             "$ref": "#/definitions/property"
           }
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": ["string", "number", "integer", "boolean"]
+          },
+          "description": "Allowed values for this property"
         }
       }
     },
     "action": {
       "type": "object",
-      "required": ["description", "method", "path"],
+      "required": [
+        "description",
+        "method",
+        "path"
+      ],
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -199,7 +260,13 @@
         },
         "method": {
           "type": "string",
-          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "PATCH"
+          ],
           "description": "HTTP method"
         },
         "path": {
@@ -234,7 +301,11 @@
     },
     "parameter": {
       "type": "object",
-      "required": ["name", "type", "in"],
+      "required": [
+        "name",
+        "type",
+        "in"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -243,12 +314,24 @@
         },
         "type": {
           "type": "string",
-          "enum": ["string", "integer", "number", "boolean", "array", "object"],
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object"
+          ],
           "description": "Parameter data type"
         },
         "in": {
           "type": "string",
-          "enum": ["query", "path", "header", "body"],
+          "enum": [
+            "query",
+            "path",
+            "header",
+            "body"
+          ],
           "description": "Where the parameter is passed"
         },
         "required": {
@@ -313,7 +396,9 @@
     },
     "response": {
       "type": "object",
-      "required": ["description"],
+      "required": [
+        "description"
+      ],
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -335,7 +420,10 @@
     },
     "errorDefinition": {
       "type": "object",
-      "required": ["code", "message"],
+      "required": [
+        "code",
+        "message"
+      ],
       "additionalProperties": false,
       "properties": {
         "code": {

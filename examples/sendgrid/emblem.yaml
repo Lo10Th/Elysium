@@ -1,0 +1,415 @@
+apiVersion: v1
+name: sendgrid
+version: 1.0.0
+description: SendGrid email delivery API — send transactional emails and manage dynamic templates
+author: Elysium Team
+license: MIT
+homepage: https://docs.sendgrid.com/api-reference
+
+baseUrl: https://api.sendgrid.com/v3
+
+auth:
+  type: bearer
+  keyEnv: SENDGRID_API_KEY
+
+tags:
+  - email
+  - transactional
+  - sendgrid
+  - communication
+  - templates
+
+category: communication
+
+types:
+  Email:
+    description: A sent email activity record
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique identifier for the sent email message
+      from_email:
+        type: string
+        required: true
+        description: Sender email address
+      to_email:
+        type: string
+        required: true
+        description: Primary recipient email address
+      subject:
+        type: string
+        required: true
+        description: Email subject line
+      status:
+        type: string
+        required: true
+        description: "Delivery status: delivered, not_delivered, processing, or bounce"
+      opens_count:
+        type: integer
+        required: false
+        description: Number of times the email was opened
+      clicks_count:
+        type: integer
+        required: false
+        description: Number of times links in the email were clicked
+      last_event_time:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of the most recent email event
+
+  EmailAddress:
+    description: An email address with an optional display name
+    properties:
+      email:
+        type: string
+        required: true
+        description: The email address (e.g. user@example.com)
+      name:
+        type: string
+        required: false
+        description: The display name associated with the email address
+
+  Template:
+    description: A SendGrid dynamic or legacy email template
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique template identifier
+      name:
+        type: string
+        required: true
+        description: Human-readable name of the template
+      generation:
+        type: string
+        required: true
+        description: "Template type: dynamic or legacy"
+      updated_at:
+        type: string
+        required: false
+        description: ISO 8601 timestamp of when the template was last updated
+
+  TemplateVersion:
+    description: A specific version of an email template
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique identifier for this template version
+      template_id:
+        type: string
+        required: true
+        description: ID of the parent template
+      active:
+        type: boolean
+        required: true
+        description: Whether this version is the active version of the template
+      name:
+        type: string
+        required: true
+        description: Name of this template version
+      subject:
+        type: string
+        required: false
+        description: Email subject line for this version (supports handlebars substitution)
+      html_content:
+        type: string
+        required: false
+        description: HTML body of the email (supports handlebars substitution)
+      plain_content:
+        type: string
+        required: false
+        description: Plain-text body of the email (supports handlebars substitution)
+
+actions:
+  # ── Email Sending ─────────────────────────────────────────────────
+  send-email:
+    description: Send a transactional email to one or more recipients
+    method: POST
+    path: /mail/send
+    requestBody:
+      description: Email message payload
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          personalizations:
+            type: array
+            required: true
+            description: >-
+              Array of personalizations defining recipients and per-recipient
+              overrides. Each entry may include to, cc, bcc (arrays of
+              EmailAddress objects), and an optional subject override.
+            items:
+              type: object
+          from:
+            type: object
+            required: true
+            description: Sender email address and optional display name
+            properties:
+              email:
+                type: string
+                required: true
+                description: Sender email address
+              name:
+                type: string
+                required: false
+                description: Sender display name
+          subject:
+            type: string
+            required: true
+            description: Global email subject line (can be overridden per personalization)
+          content:
+            type: array
+            required: true
+            description: >-
+              Array of content objects. Each object must include a MIME type
+              (e.g. text/plain or text/html) and the corresponding body value.
+            items:
+              type: object
+          template_id:
+            type: string
+            required: false
+            description: ID of a dynamic template to use; overrides content when provided
+          reply_to:
+            type: object
+            required: false
+            description: Reply-to email address and optional display name
+            properties:
+              email:
+                type: string
+                required: true
+                description: Reply-to email address
+              name:
+                type: string
+                required: false
+                description: Reply-to display name
+    responses:
+      202:
+        description: Email accepted for delivery — no response body is returned
+      400:
+        description: Invalid request payload or missing required fields
+      401:
+        description: Missing or invalid API key
+      403:
+        description: Insufficient permissions to send email
+      429:
+        description: Rate limit exceeded — retry after the indicated delay
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid request body
+        description: The request body is invalid or missing required fields such as personalizations, from, subject, or content
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Missing or invalid API key — set SENDGRID_API_KEY to a valid key
+      - code: 403
+        error: forbidden
+        message: Insufficient permissions
+        description: The API key does not have permission to send email
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: Rate limit exceeded — wait and retry the request
+      - code: 500
+        error: internal_error
+        message: SendGrid internal server error
+        description: An unexpected error occurred on the SendGrid platform
+
+  # ── Email Activity ────────────────────────────────────────────────
+  list-emails:
+    description: List sent email activity records using a filter query
+    method: GET
+    path: /messages
+    parameters:
+      - name: query
+        type: string
+        in: query
+        required: true
+        description: >-
+          SGQL filter expression. Examples: "to_email=user@example.com",
+          "subject=Hello", "status=delivered"
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        default: 10
+        description: Maximum number of results to return (1–1000, default 10)
+      - name: offset
+        type: integer
+        in: query
+        required: false
+        description: Number of results to skip for pagination
+    responses:
+      200:
+        description: Array of email activity records matching the query
+        schema:
+          type: array
+          items: Email
+      400:
+        description: Invalid query expression or parameter value
+      401:
+        description: Missing or invalid API key
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid query
+        description: The query parameter is missing or contains an invalid SGQL expression
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Missing or invalid API key — set SENDGRID_API_KEY to a valid key
+      - code: 403
+        error: forbidden
+        message: Insufficient permissions
+        description: The API key does not have permission to access email activity
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: Rate limit exceeded — wait and retry the request
+      - code: 500
+        error: internal_error
+        message: SendGrid internal server error
+        description: An unexpected error occurred on the SendGrid platform
+
+  get-email:
+    description: Get details of a specific sent email by its message ID
+    method: GET
+    path: /messages/{msg_id}
+    parameters:
+      - name: msg_id
+        type: string
+        in: path
+        required: true
+        description: Unique message ID of the sent email (returned by the activity feed)
+    responses:
+      200:
+        description: Detailed email activity record
+        schema: Email
+      401:
+        description: Missing or invalid API key
+      404:
+        description: No email found with the given message ID
+    errors:
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Missing or invalid API key — set SENDGRID_API_KEY to a valid key
+      - code: 403
+        error: forbidden
+        message: Insufficient permissions
+        description: The API key does not have permission to access email activity
+      - code: 404
+        error: not_found
+        message: Message not found
+        description: No email activity record exists for the given message ID
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: Rate limit exceeded — wait and retry the request
+      - code: 500
+        error: internal_error
+        message: SendGrid internal server error
+        description: An unexpected error occurred on the SendGrid platform
+
+  # ── Templates ─────────────────────────────────────────────────────
+  create-template:
+    description: Create a new dynamic or legacy email template
+    method: POST
+    path: /templates
+    requestBody:
+      description: Template creation payload
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            required: true
+            description: Human-readable name for the template (must be unique within your account)
+          generation:
+            type: string
+            required: true
+            description: "Template type: dynamic (handlebars) or legacy (substitution tags)"
+    responses:
+      201:
+        description: The newly created template object
+        schema: Template
+      400:
+        description: Invalid request body or missing required fields
+      401:
+        description: Missing or invalid API key
+    errors:
+      - code: 400
+        error: bad_request
+        message: Invalid template payload
+        description: The request body is invalid — name and generation are required
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Missing or invalid API key — set SENDGRID_API_KEY to a valid key
+      - code: 403
+        error: forbidden
+        message: Insufficient permissions
+        description: The API key does not have permission to manage templates
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: Rate limit exceeded — wait and retry the request
+      - code: 500
+        error: internal_error
+        message: SendGrid internal server error
+        description: An unexpected error occurred on the SendGrid platform
+
+  list-templates:
+    description: List all email templates in your SendGrid account
+    method: GET
+    path: /templates
+    parameters:
+      - name: generations
+        type: string
+        in: query
+        required: false
+        description: "Filter by template type: dynamic, legacy, or dynamic,legacy (default: dynamic)"
+        enum:
+          - dynamic
+          - legacy
+          - "dynamic,legacy"
+      - name: page_size
+        type: integer
+        in: query
+        required: false
+        default: 10
+        description: Number of templates to return per page (default 10)
+      - name: page_token
+        type: string
+        in: query
+        required: false
+        description: Pagination token returned from a previous list-templates response
+    responses:
+      200:
+        description: Paginated list of template objects
+        schema:
+          type: array
+          items: Template
+      401:
+        description: Missing or invalid API key
+    errors:
+      - code: 401
+        error: unauthorized
+        message: Authentication required
+        description: Missing or invalid API key — set SENDGRID_API_KEY to a valid key
+      - code: 403
+        error: forbidden
+        message: Insufficient permissions
+        description: The API key does not have permission to list templates
+      - code: 429
+        error: rate_limit_exceeded
+        message: Too many requests
+        description: Rate limit exceeded — wait and retry the request
+      - code: 500
+        error: internal_error
+        message: SendGrid internal server error
+        description: An unexpected error occurred on the SendGrid platform

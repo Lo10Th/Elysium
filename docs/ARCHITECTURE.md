@@ -185,11 +185,11 @@ flowchart TD
     Client["Client\n(CLI / Browser)"]
 
     subgraph FastAPI["FastAPI Application"]
-        CORS["CORSMiddleware\n(origin allowlist)"]
-        SecHdr["SecurityHeadersMiddleware\n(X-Frame-Options, nosniff…)"]
-        RateLimit["Rate Limiter (slowapi)\nper-IP, per-endpoint limits"]
+        SecHdr["SecurityHeadersMiddleware\n(X-Frame-Options, nosniff…)\nadded first → innermost"]
+        CORS["CORSMiddleware\n(origin allowlist)\nadded second → outermost"]
         Router["APIRouter\n/api/auth  /api/emblems  /api/keys"]
         AuthDep["get_current_user() dependency\n(Bearer JWT → Supabase validation)"]
+        RateLimitNote["Rate limiting applied\nper-route via @limiter.limit()"]
 
         subgraph Services["Service Layer"]
             AuthSvc["AuthService\nauth_service.py"]
@@ -200,10 +200,11 @@ flowchart TD
 
     Supabase["Supabase Client\n(run_sync → asyncio.to_thread)"]
 
-    Client -->|"HTTPS request"| CORS
-    CORS --> SecHdr
-    SecHdr --> RateLimit
-    RateLimit --> Router
+    Client -->|"HTTPS request"| SecHdr
+    SecHdr --> CORS
+    CORS --> Router
+    Router -->|"rate-limited endpoints"| RateLimitNote
+    RateLimitNote --> AuthDep
     Router -->|"protected routes"| AuthDep
     AuthDep --> Services
     Router -->|"public routes"| Services
@@ -264,6 +265,8 @@ sequenceDiagram
 ## 4. Database Schema
 
 The database is hosted on **Supabase** (PostgreSQL). Row Level Security (RLS) is enabled on all public tables. `auth.users` is managed entirely by Supabase (passwords, JWT issuance) — application code only references it via foreign keys. The `public.profiles` table holds application-level user data and is linked 1-to-1 with `auth.users`.
+
+> **Migration status:** `profiles` is created by `001_profiles_and_search.sql` and `device_codes` by `002_device_codes.sql`. The `emblems`, `emblem_versions`, and `api_keys` tables are referenced in grants and foreign-key constraints within those migrations but their own `CREATE TABLE` DDL is not yet in the migrations directory (pending migration). The schema below reflects the intended complete structure used by the application code.
 
 ```mermaid
 erDiagram

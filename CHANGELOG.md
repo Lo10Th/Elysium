@@ -127,18 +127,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2026-03-03
 
 ### Added
-- Email/password authentication for CLI (`ely login` now prompts for credentials)
+- Email/credential authentication for CLI (`ely login` now prompts for credentials)
 - Registration flow within login (prompts to register if account doesn't exist)
 - User info storage (email, username) in config
 
 ### Changed
-- `ely login` now uses email/password instead of OAuth
+- `ely login` now uses email/credential auth instead of OAuth
 - `ely logout` clears all stored auth data
 - `ely whoami` shows stored user info
 
 ### Fixed
 - OAuth endpoints now return helpful error messages (501 Not Implemented)
-- Password input is hidden during login
+- Credential input is hidden during login
 
 ---
 
@@ -146,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Dynamic emblem execution - `ely <emblem> <action>` works
-- Auth token management with email/password authentication
+- Auth token management with email/credential authentication
 - CLI API key management commands (`ely keys`)
 - Emblem scaffolding with `ely init` ([#27](https://github.com/Lo10Th/Elysium/pull/27))
 - Local validation with `ely validate` ([#28](https://github.com/Lo10Th/Elysium/pull/28))

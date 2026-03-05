@@ -1,3 +1,11 @@
+# Security
+
+> **The canonical security policy lives at [`/SECURITY.md`](../SECURITY.md)** at the repository root.  
+> GitHub displays that file automatically on the repository's Security tab.
+> The content below is kept as a convenience reference for readers browsing the `docs/` directory.
+
+---
+
 # Security Policy
 
 ## Supported Versions
@@ -48,7 +56,7 @@ After `ely login`, a JWT access token is written to:
 ~/.elysium/config.yaml
 ```
 
-This file is created with permissions `0600` (owner read/write only). It is **not** stored in the OS keyring in the current release; that is planned for a future version.
+This file is created with permissions `0600` (owner read/write only). It is **not** stored in the OS keyring; all tokens are stored as plain text in the config file, so protect this file accordingly.
 
 **Do not** commit `~/.elysium/config.yaml` to version control. The file contains your Elysium auth token.
 

@@ -37,6 +37,42 @@ cd ../server && pip install -r requirements.txt
 npm install -g supabase
 ```
 
+### IDE Setup
+
+**VS Code (recommended)**
+
+Install the following extensions:
+- [Go](https://marketplace.visualstudio.com/items?itemName=golang.Go) — syntax highlighting, go vet, gopls language server
+- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) — linting, debugging, virtual environments
+- [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance) — fast type checking powered by pyright
+- [YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) — emblem schema validation (configure `schemas/emblem.schema.json`)
+- [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter) — auto-format Python on save
+
+Suggested `.vscode/settings.json`:
+```json
+{
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "go.lintTool": "golangci-lint",
+  "python.linting.ruffEnabled": true,
+  "python.linting.mypyEnabled": true
+}
+```
+
+**GoLand / IntelliJ IDEA**
+
+Enable *Go vet* and *gofmt* under **Settings → Go → Code Quality Tools**.
+
+**PyCharm**
+
+Enable *mypy* under **Settings → Tools → External Tools** and configure *black* as the formatter under **Settings → Tools → Black**.
+
 ### Environment Variables
 
 Create `.env` files for local development:
@@ -60,6 +96,7 @@ SECRET_KEY=your_secret_key
 ### Go (CLI)
 
 - Use `gofmt` for formatting
+- Use `go vet` to catch common mistakes (`go vet ./...`)
 - Follow [Effective Go](https://golang.org/doc/effective_go)
 - Package names: lowercase, single word
 - Exported functions: must have comments
@@ -84,6 +121,7 @@ func (e *Executor) Execute(ctx context.Context, action *Action, params map[strin
 - Use `black` for formatting
 - Use `isort` for import sorting
 - Use `ruff` for linting
+- Use `mypy` for static type checking (`mypy app/ --ignore-missing-imports`)
 - Type hints: required for all functions
 - Docstrings: Google style
 - Use Pydantic for data validation
@@ -157,6 +195,23 @@ go tool cover -html=coverage.out
 cd server
 pytest --cov=app --cov-report=html tests/
 ```
+
+### Integration Tests
+
+Integration tests exercise the full emblem execution flow against local mock HTTP servers. They are kept behind the `integration` build tag so they do not run during ordinary `go test ./...` passes.
+
+```bash
+cd cli
+go test -v -tags=integration ./test/
+```
+
+| Scenario | Tests |
+|----------|-------|
+| **Happy path** | `TestFullEmblemFlow*` — cache write → load → execute |
+| **Error handling** | `TestErrorHandling_*` — missing emblem, bad YAML, API errors, connection failure |
+| **Auth integration** | `TestAuthIntegration_*` — missing/wrong/correct key, no-auth emblem |
+
+No external services or credentials are required; all HTTP calls are made to `net/http/httptest` servers that spin up and tear down within each test.
 
 ### Test Naming Convention
 

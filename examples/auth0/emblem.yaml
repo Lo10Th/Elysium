@@ -1,0 +1,369 @@
+apiVersion: v1
+name: auth0
+version: 1.0.0
+description: Auth0 Management API v2 for managing users in your tenant. Set baseUrl to https://{your-tenant}.auth0.com/api/v2
+author: Elysium Team
+license: MIT
+
+# Replace YOUR_DOMAIN with your Auth0 tenant domain (e.g., my-tenant.auth0.com or my-tenant.us.auth0.com)
+baseUrl: https://YOUR_DOMAIN.auth0.com/api/v2
+
+auth:
+  type: bearer
+  keyEnv: AUTH0_MANAGEMENT_TOKEN
+  header: Authorization
+  prefix: "Bearer "
+
+tags:
+  - auth0
+  - identity
+  - users
+  - management
+  - security
+
+category: security
+
+types:
+  User:
+    description: An Auth0 user account
+    properties:
+      user_id:
+        type: string
+        required: true
+        description: Unique identifier for the user (e.g., auth0|abc123)
+      email:
+        type: string
+        required: false
+        description: User's email address
+      email_verified:
+        type: boolean
+        required: false
+        description: Whether the user's email address has been verified
+      username:
+        type: string
+        required: false
+        description: Username for the user (if applicable)
+      name:
+        type: string
+        required: false
+        description: Full name of the user
+      given_name:
+        type: string
+        required: false
+        description: First name of the user
+      family_name:
+        type: string
+        required: false
+        description: Last name of the user
+      nickname:
+        type: string
+        required: false
+        description: Preferred display name of the user
+      picture:
+        type: string
+        required: false
+        description: URL to the user's profile picture
+      phone_number:
+        type: string
+        required: false
+        description: User's phone number in E.164 format (e.g., +14155552671)
+      phone_verified:
+        type: boolean
+        required: false
+        description: Whether the user's phone number has been verified
+      connection:
+        type: string
+        required: false
+        description: Name of the database connection the user belongs to
+      blocked:
+        type: boolean
+        required: false
+        description: Whether the user is blocked from authentication
+      created_at:
+        type: string
+        required: false
+        description: Timestamp when the user was created (ISO 8601)
+      updated_at:
+        type: string
+        required: false
+        description: Timestamp when the user was last updated (ISO 8601)
+      last_login:
+        type: string
+        required: false
+        description: Timestamp of the user's last login (ISO 8601)
+      last_ip:
+        type: string
+        required: false
+        description: IP address of the user's last login
+      logins_count:
+        type: integer
+        required: false
+        description: Total number of times the user has logged in
+
+actions:
+  list-users:
+    description: Retrieve a list of users from the Auth0 tenant with optional filters
+    method: GET
+    path: /users
+    parameters:
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        description: Number of users per page (max 100)
+        default: 50
+      - name: page
+        type: integer
+        in: query
+        required: false
+        description: Page number (zero-based)
+        default: 0
+      - name: include_totals
+        type: boolean
+        in: query
+        required: false
+        description: Whether to include the total count of users in the response
+        default: false
+      - name: q
+        type: string
+        in: query
+        required: false
+        description: Lucene query string to filter users (e.g., email:"user@example.com")
+      - name: search_engine
+        type: string
+        in: query
+        required: false
+        description: Search engine version to use. Use v3 for all new implementations (v1 and v2 are deprecated)
+        enum:
+          - v3
+      - name: sort
+        type: string
+        in: query
+        required: false
+        description: Field and order to sort results (e.g., email:1 for ASC, email:-1 for DESC)
+      - name: fields
+        type: string
+        in: query
+        required: false
+        description: Comma-separated list of fields to include or exclude in the response
+    responses:
+      200:
+        description: List of users matching the query
+        schema:
+          type: array
+          items: User
+      400:
+        description: Invalid request parameters
+      401:
+        description: Unauthorized - invalid or missing token
+      403:
+        description: Forbidden - insufficient scope
+
+  get-user:
+    description: Retrieve details of a specific user by their Auth0 user ID
+    method: GET
+    path: /users/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: The Auth0 user ID (e.g., auth0|abc123)
+      - name: fields
+        type: string
+        in: query
+        required: false
+        description: Comma-separated list of fields to include or exclude in the response
+    responses:
+      200:
+        description: User details
+        schema: User
+      401:
+        description: Unauthorized - invalid or missing token
+      403:
+        description: Forbidden - insufficient scope
+      404:
+        description: User not found
+
+  create-user:
+    description: Create a new user in the Auth0 tenant
+    method: POST
+    path: /users
+    requestBody:
+      description: User data for the new account
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          email:
+            type: string
+            required: false
+            description: User's email address
+          username:
+            type: string
+            required: false
+            description: Username (required for some connection types)
+          password:
+            type: string
+            required: false
+            description: Initial password (required for database connections)
+          connection:
+            type: string
+            required: true
+            description: Name of the database connection to create the user in
+          name:
+            type: string
+            required: false
+            description: Full name of the user
+          given_name:
+            type: string
+            required: false
+            description: First name of the user
+          family_name:
+            type: string
+            required: false
+            description: Last name of the user
+          nickname:
+            type: string
+            required: false
+            description: Preferred display name
+          picture:
+            type: string
+            required: false
+            description: URL to the user's profile picture
+          phone_number:
+            type: string
+            required: false
+            description: User's phone number (E.164 format)
+          email_verified:
+            type: boolean
+            required: false
+            description: Set to true to mark the email as verified
+            default: false
+          phone_verified:
+            type: boolean
+            required: false
+            description: Set to true to mark the phone number as verified
+            default: false
+          blocked:
+            type: boolean
+            required: false
+            description: Whether the user should be blocked from authentication
+            default: false
+    responses:
+      201:
+        description: User created successfully
+        schema: User
+      400:
+        description: Invalid user data or missing required fields
+      401:
+        description: Unauthorized - invalid or missing token
+      403:
+        description: Forbidden - insufficient scope
+      409:
+        description: User already exists with this email or username
+
+  update-user:
+    description: Update an existing user's profile or account settings
+    method: PATCH
+    path: /users/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: The Auth0 user ID (e.g., auth0|abc123)
+    requestBody:
+      description: User fields to update (only provided fields are changed)
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          email:
+            type: string
+            required: false
+            description: New email address for the user
+          username:
+            type: string
+            required: false
+            description: New username for the user
+          password:
+            type: string
+            required: false
+            description: New password for the user (database connections only)
+          name:
+            type: string
+            required: false
+            description: Updated full name
+          given_name:
+            type: string
+            required: false
+            description: Updated first name
+          family_name:
+            type: string
+            required: false
+            description: Updated last name
+          nickname:
+            type: string
+            required: false
+            description: Updated display nickname
+          picture:
+            type: string
+            required: false
+            description: Updated profile picture URL
+          phone_number:
+            type: string
+            required: false
+            description: User's phone number in E.164 format (e.g., +14155552671)
+          email_verified:
+            type: boolean
+            required: false
+            description: Mark the email as verified or unverified
+          phone_verified:
+            type: boolean
+            required: false
+            description: Mark the phone number as verified or unverified
+          blocked:
+            type: boolean
+            required: false
+            description: Block or unblock the user from authentication
+          connection:
+            type: string
+            required: false
+            description: Database connection name (required when changing email or username)
+    responses:
+      200:
+        description: User updated successfully
+        schema: User
+      400:
+        description: Invalid update data
+      401:
+        description: Unauthorized - invalid or missing token
+      403:
+        description: Forbidden - insufficient scope
+      404:
+        description: User not found
+      409:
+        description: Conflict - email or username already in use
+
+  delete-user:
+    description: Permanently delete a user from the Auth0 tenant
+    method: DELETE
+    path: /users/{id}
+    parameters:
+      - name: id
+        type: string
+        in: path
+        required: true
+        description: The Auth0 user ID (e.g., auth0|abc123)
+    responses:
+      204:
+        description: User deleted successfully
+      401:
+        description: Unauthorized - invalid or missing token
+      403:
+        description: Forbidden - insufficient scope
+      404:
+        description: User not found
+
+

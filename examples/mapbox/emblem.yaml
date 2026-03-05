@@ -9,9 +9,7 @@ homepage: https://docs.mapbox.com/api/
 baseUrl: https://api.mapbox.com
 
 auth:
-  type: api_key
-  keyEnv: MAPBOX_ACCESS_TOKEN
-  header: Authorization
+  type: none
 
 tags:
   - maps
@@ -160,6 +158,11 @@ actions:
         in: path
         required: true
         description: Address, place name, or search query to geocode (URL-encoded)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
       - name: proximity
         type: string
         in: query
@@ -272,6 +275,11 @@ actions:
         in: path
         required: true
         description: Latitude of the point to reverse geocode (decimal degrees, -90 to 90)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
       - name: language
         type: string
         in: query
@@ -374,6 +382,11 @@ actions:
         in: path
         required: true
         description: Semicolon-separated waypoints as "longitude,latitude" pairs (minimum 2, maximum 25 waypoints)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
       - name: alternatives
         type: boolean
         in: query
@@ -492,6 +505,11 @@ actions:
         in: query
         required: true
         description: Search query text to find place suggestions (supports partial input for autocomplete)
+      - name: access_token
+        type: string
+        in: query
+        required: true
+        description: Mapbox public access token — set MAPBOX_ACCESS_TOKEN in your environment and pass its value here
       - name: proximity
         type: string
         in: query

@@ -4,6 +4,7 @@ version: 1.0.0
 description: Stripe payment processing API — customers, payment intents, and charges
 author: Elysium Team
 license: MIT
+homepage: https://stripe.com/docs/api
 
 baseUrl: https://api.stripe.com/v1
 
@@ -136,6 +137,9 @@ actions:
     responses:
       200:
         description: A paginated list of customers
+        schema:
+          type: array
+          items: Customer
 
   get-customer:
     description: Retrieve a customer by ID
@@ -153,6 +157,11 @@ actions:
         schema: Customer
       404:
         description: No such customer
+    errors:
+      - code: 404
+        error: resource_missing
+        message: No such customer
+        description: The customer ID provided does not match any existing customer
 
   create-customer:
     description: Create a new Stripe customer
@@ -195,6 +204,29 @@ actions:
         description: Deletion confirmation object
 
   # ── Payment Intents ───────────────────────────────────────────────
+  list-payment-intents:
+    description: List all PaymentIntents (most recent first)
+    method: GET
+    path: /payment_intents
+    parameters:
+      - name: limit
+        type: integer
+        in: query
+        required: false
+        description: Number of PaymentIntents to return (1–100, default 10)
+        default: 10
+      - name: customer
+        type: string
+        in: query
+        required: false
+        description: Filter PaymentIntents by customer ID
+    responses:
+      200:
+        description: A paginated list of PaymentIntents
+        schema:
+          type: array
+          items: PaymentIntent
+
   create-payment-intent:
     description: Create a PaymentIntent to collect a payment
     method: POST
@@ -224,6 +256,11 @@ actions:
       200:
         description: The created PaymentIntent
         schema: PaymentIntent
+    errors:
+      - code: 402
+        error: card_declined
+        message: Your card was declined
+        description: The payment was declined by the card issuer; check the decline code for details
 
   get-payment-intent:
     description: Retrieve a PaymentIntent by ID
@@ -239,6 +276,13 @@ actions:
       200:
         description: The PaymentIntent object
         schema: PaymentIntent
+      404:
+        description: No such PaymentIntent
+    errors:
+      - code: 404
+        error: resource_missing
+        message: No such payment_intent
+        description: The PaymentIntent ID provided does not match any existing PaymentIntent
 
   confirm-payment-intent:
     description: Confirm a PaymentIntent to attempt collection of payment
@@ -298,6 +342,9 @@ actions:
     responses:
       200:
         description: A paginated list of charges
+        schema:
+          type: array
+          items: Charge
 
   get-charge:
     description: Retrieve a charge by ID
@@ -313,3 +360,10 @@ actions:
       200:
         description: The charge object
         schema: Charge
+      404:
+        description: No such charge
+    errors:
+      - code: 404
+        error: resource_missing
+        message: No such charge
+        description: The charge ID provided does not match any existing charge

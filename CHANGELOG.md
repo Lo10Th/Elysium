@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned Features
+- `ely remove <name>` - Uninstall emblem
+- `ely publish` - Publish emblem to registry
+- Web UI for browsing emblems
+- Emblem marketplace with ratings
+
+---
+
+## [1.0.0] - 2026-03-04
+
 ### Added
+- **Self-Update Command** - `ely self-update` updates the CLI binary in place
+  - `ely self-update --check` checks for updates without installing
+  - `ely self-update --version v1.0.0` installs a specific version
+  - `ely self-update --force` reinstalls even if already up to date
+- **Browser-Based Authentication** - Device-flow OAuth via `ely login`
+  - Displays a one-time device code and verification URL
+  - Attempts to open the browser automatically
+  - Polls for authorization with a live spinner
+- **Update & Outdated Commands** - `ely update` and `ely outdated` are now fully implemented
+  - `ely update [emblem...]` updates one or more installed emblems
+  - `ely update --all` updates every installed emblem at once
+  - `ely outdated` lists installed emblems that have newer versions available
+- **Improved Error Messages** - Actionable suggestions on common failures (emblem not found, auth required, registry unreachable)
+- **Better Performance** - Faster emblem resolution and reduced startup overhead
 - **Integration Tests** - End-to-end CLI integration tests for the emblem pull → execute pipeline ([#102](https://github.com/Lo10Th/Elysium/pull/102))
   - Tests gated behind `//go:build integration`, using `httptest` servers and `t.TempDir()` — no external services required
   - Happy-path scenarios: cache write/load/execute, path param substitution, query param forwarding
@@ -17,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaces per-request `http.Client` creation in `login.go`, `checker.go`, and `downloader.go`
 
 ### Changed
+- Version bumped from 0.2.x to 1.0.0 (first stable release)
+- `ely update` and `ely outdated` moved from *Planned* to *Implemented*
+- Install script default version updated to `v1.0.0`
 - **Server: Async Route Handlers** - All Supabase calls now run in a thread pool via `asyncio.to_thread()` through new `run_sync()` helper in `database.py`, preventing event-loop blocking under concurrency ([#97](https://github.com/Lo10Th/Elysium/pull/97))
 - **Server: Pydantic Models Consolidated** - All auth request/response models moved from inline definitions in `routes/auth.py` to the canonical `app/models.py` ([#96](https://github.com/Lo10Th/Elysium/pull/96))
 - **Server: Emblem Construction Unified** - All `Emblem(...)` constructions go through `_row_to_emblem()` helper, with improved `author_name` resolution for both joined rows and RPC responses ([#95](https://github.com/Lo10Th/Elysium/pull/95))
@@ -30,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Server: Test Suite** - 11 failing tests fixed by updating profile query mocks after auth refactor added `profiles` table lookups ([#89](https://github.com/Lo10Th/Elysium/pull/89))
 - **Server: OAuth NameError** - Restored module-level `oauth_states: dict[str, str] = {}` in `routes/auth.py` that was accidentally removed during device-code flow refactor ([#88](https://github.com/Lo10Th/Elysium/pull/88))
+
+### Breaking Changes
+- None. All existing commands and emblem YAML files remain compatible.
 
 ---
 
@@ -97,18 +127,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2026-03-03
 
 ### Added
-- Email/password authentication for CLI (`ely login` now prompts for credentials)
+- Email/credential authentication for CLI (`ely login` now prompts for credentials)
 - Registration flow within login (prompts to register if account doesn't exist)
 - User info storage (email, username) in config
 
 ### Changed
-- `ely login` now uses email/password instead of OAuth
+- `ely login` now uses email/credential auth instead of OAuth
 - `ely logout` clears all stored auth data
 - `ely whoami` shows stored user info
 
 ### Fixed
 - OAuth endpoints now return helpful error messages (501 Not Implemented)
-- Password input is hidden during login
+- Credential input is hidden during login
 
 ---
 
@@ -116,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Dynamic emblem execution - `ely <emblem> <action>` works
-- Auth token management with email/password authentication
+- Auth token management with email/credential authentication
 - CLI API key management commands (`ely keys`)
 - Emblem scaffolding with `ely init` ([#27](https://github.com/Lo10Th/Elysium/pull/27))
 - Local validation with `ely validate` ([#28](https://github.com/Lo10Th/Elysium/pull/28))
@@ -138,7 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Lo10Th/Elysium/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Lo10Th/Elysium/compare/v0.2.1...v1.0.0
 [0.2.1]: https://github.com/Lo10Th/Elysium/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Lo10Th/Elysium/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Lo10Th/Elysium/compare/v0.1.0...v0.1.1

@@ -5,8 +5,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Lo10Th/Elysium)](https://goreportcard.com/report/github.com/Lo10Th/Elysium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version**: 0.2.0  
-**Status**: In Development
+**Version**: 1.0.0  
+**Status**: Stable
 
 Elysium is an API app store that allows developers and AI agents to discover, download, and use APIs programmatically through defined emblems—YAML files that describe an API's endpoints, parameters, authentication, and types.
 
@@ -27,6 +27,14 @@ APIs are everywhere, but using them requires:
 - 🔄 **Automation** of complex API workflows
 - 📦 **Version control** for API integrations
 
+## What's New in v1.0.0
+
+- 🔄 **Self-Update** — `ely self-update` updates the CLI binary in place
+- 🌐 **Browser-Based Auth** — device-flow OAuth for seamless login
+- 💬 **Improved Error Messages** — actionable suggestions on every failure
+- ⚡ **Better Performance** — faster emblem resolution and reduced startup time
+- 📋 **Update & Outdated Commands** — `ely update` and `ely outdated` are now fully implemented
+
 ## Quick Start
 
 ### Installation
@@ -39,7 +47,7 @@ curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.
 wget -qO- https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash
 
 # Install a specific version
-curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v0.2.0
+curl -sSL https://raw.githubusercontent.com/Lo10Th/Elysium/main/scripts/install.sh | bash -s -- --version v1.0.0
 
 # Using Go install
 go install github.com/Lo10Th/Elysium/cli/cmd/ely@latest
@@ -61,7 +69,6 @@ ely pull clothing-shop
 ely info clothing-shop
 
 # Execute actions
-ely pull clothing-shop
 export CLOTHING_SHOP_API_KEY=your-api-key
 
 # List products
@@ -81,6 +88,54 @@ ely clothing-shop create-order \
   --customer-email "john@example.com" \
   --customer-address "123 Main St" \
   --items '[{"product_id": 1, "quantity": 2}]'
+```
+
+### Authentication Flow
+
+```bash
+# Browser-based login (opens browser automatically)
+ely login
+# → Displays a device code and verification URL
+# → Opens your browser and waits for authorization
+# → Saves credentials on success
+
+# Email/password login (fallback)
+ely login --password
+
+# Show current user
+ely whoami
+
+# Log out
+ely logout
+```
+
+### Self-Update
+
+```bash
+# Update ely to the latest version
+ely self-update
+
+# Check for a new version without installing
+ely self-update --check
+
+# Install a specific version
+ely self-update --version v1.0.0
+
+# Force reinstall even if already up to date
+ely self-update --force
+```
+
+### Keep Emblems Up to Date
+
+```bash
+# Check which installed emblems have updates available
+ely outdated
+
+# Update a specific emblem
+ely update clothing-shop
+
+# Update all installed emblems at once
+ely update --all
 ```
 
 ## Architecture
@@ -241,15 +296,32 @@ ely keys delete <id>       # Delete API key
 ely keys show <id>         # Show key details
 ```
 
+### Maintenance
+
+```bash
+ely update <name>          # Update a specific emblem
+ely update --all           # Update all installed emblems
+ely outdated               # Show emblems with updates available
+ely remove <name>          # Uninstall emblem (planned)
+```
+
+### CLI Updates
+
+```bash
+ely self-update            # Update ely to the latest version
+ely self-update --check    # Check for updates without installing
+ely self-update --version v1.0.0 # Install a specific version
+ely self-update --force    # Force reinstall
+ely check-updates          # Check if a new ely version is available
+```
+
 ### Planned Commands (Not Yet Implemented)
 
 The following commands are planned for future releases:
 
 ```bash
-ely update <name>         # Update emblem to latest version
 ely remove <name>         # Uninstall emblem
 ely publish ./<dir>/      # Publish emblem to registry
-ely completion bash       # Shell completion
 ```
 
 ## Server Endpoints
@@ -370,9 +442,12 @@ git push origin v1.0.0
 - [x] Emblem specification and schema
 - [x] Registry backend (Supabase + FastAPI)
 - [x] Go CLI core commands
-- [x] Authentication (OAuth + API keys)
+- [x] Authentication (OAuth + API keys + browser-based device flow)
 - [x] Dynamic emblem execution
 - [x] Local validation and testing
+- [x] Self-update command (`ely self-update`)
+- [x] Update & outdated commands (`ely update`, `ely outdated`)
+- [x] Improved error messages with actionable suggestions
 - [ ] Web UI for browsing emblems
 - [ ] Emblem marketplace
 - [ ] Private namespaces
@@ -380,8 +455,17 @@ git push origin v1.0.0
 - [ ] API monitoring integration
 - [ ] Code generation (SDKs)
 
+## Breaking Changes
+
+There are **no breaking changes** in v1.0.0. All existing commands and emblem YAML files are fully compatible with previous versions.
+
+For a complete history of changes see [CHANGELOG.md](CHANGELOG.md).
+
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to Elysium.
+
+Quick summary:
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Make changes

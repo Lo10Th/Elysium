@@ -1,0 +1,390 @@
+apiVersion: v1
+name: cloudflare-dns
+version: 1.0.0
+description: Manage Cloudflare DNS records and CDN cache across your zones
+author: Elysium Team
+license: MIT
+homepage: https://developers.cloudflare.com/api/
+
+baseUrl: https://api.cloudflare.com/client/v4
+
+auth:
+  type: bearer
+  keyEnv: CLOUDFLARE_API_TOKEN
+  header: Authorization
+  prefix: "Bearer "
+
+tags:
+  - cloudflare
+  - dns
+  - cdn
+  - infrastructure
+  - networking
+
+category: infrastructure
+
+types:
+  Zone:
+    description: A Cloudflare zone representing a domain
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique zone identifier
+      name:
+        type: string
+        required: true
+        description: Domain name of the zone
+      status:
+        type: string
+        required: true
+        description: "Zone status (active, pending, initializing, moved, deleted, deactivated)"
+      paused:
+        type: boolean
+        required: false
+        description: Whether the zone is paused (bypasses Cloudflare)
+      type:
+        type: string
+        required: false
+        description: "Zone type (full, partial, secondary)"
+      name_servers:
+        type: array
+        required: false
+        description: Cloudflare-assigned name servers
+        items:
+          type: string
+      created_on:
+        type: string
+        required: false
+        description: Zone creation timestamp (ISO 8601)
+      modified_on:
+        type: string
+        required: false
+        description: Zone last modification timestamp (ISO 8601)
+
+  DnsRecord:
+    description: A DNS record within a Cloudflare zone
+    properties:
+      id:
+        type: string
+        required: true
+        description: Unique DNS record identifier
+      zone_id:
+        type: string
+        required: true
+        description: Zone identifier the record belongs to
+      zone_name:
+        type: string
+        required: false
+        description: Domain name of the zone
+      name:
+        type: string
+        required: true
+        description: DNS record name (e.g., example.com or sub.example.com)
+      type:
+        type: string
+        required: true
+        description: "DNS record type (A, AAAA, CNAME, TXT, MX, NS, SRV, CAA, PTR)"
+      content:
+        type: string
+        required: true
+        description: DNS record content (e.g., IP address, hostname, or text value)
+      ttl:
+        type: integer
+        required: false
+        default: 1
+        description: Time to live in seconds (1 = automatic)
+      proxied:
+        type: boolean
+        required: false
+        default: false
+        description: Whether the record is proxied through Cloudflare
+      proxiable:
+        type: boolean
+        required: false
+        description: Whether this record type can be proxied
+      comment:
+        type: string
+        required: false
+        description: Optional comment for the DNS record
+      created_on:
+        type: string
+        required: false
+        description: Record creation timestamp (ISO 8601)
+      modified_on:
+        type: string
+        required: false
+        description: Record last modification timestamp (ISO 8601)
+
+actions:
+  list-zones:
+    description: List all zones in the account with optional name filter
+    method: GET
+    path: /zones
+    parameters:
+      - name: name
+        type: string
+        in: query
+        required: false
+        description: Filter zones by domain name (exact match)
+      - name: status
+        type: string
+        in: query
+        required: false
+        description: Filter zones by status
+        enum:
+          - active
+          - pending
+          - initializing
+          - moved
+          - deleted
+          - deactivated
+      - name: page
+        type: integer
+        in: query
+        required: false
+        default: 1
+        description: Page number of results
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        default: 20
+        description: Number of results per page (max 50)
+    responses:
+      200:
+        description: List of zones
+        schema:
+          type: array
+          items: Zone
+      400:
+        description: Invalid request parameters
+      401:
+        description: Missing or invalid authentication token
+
+  list-dns-records:
+    description: List DNS records for a zone with optional filters
+    method: GET
+    path: /zones/{zone_id}/dns_records
+    parameters:
+      - name: zone_id
+        type: string
+        in: path
+        required: true
+        description: Identifier of the zone to list DNS records for
+      - name: type
+        type: string
+        in: query
+        required: false
+        description: Filter by DNS record type
+        enum:
+          - A
+          - AAAA
+          - CNAME
+          - TXT
+          - MX
+          - NS
+          - SRV
+          - CAA
+          - PTR
+      - name: name
+        type: string
+        in: query
+        required: false
+        description: Filter by DNS record name
+      - name: content
+        type: string
+        in: query
+        required: false
+        description: Filter by DNS record content value
+      - name: page
+        type: integer
+        in: query
+        required: false
+        default: 1
+        description: Page number of results
+      - name: per_page
+        type: integer
+        in: query
+        required: false
+        default: 20
+        description: Number of results per page (max 100)
+    responses:
+      200:
+        description: List of DNS records for the zone
+        schema:
+          type: array
+          items: DnsRecord
+      400:
+        description: Invalid request parameters
+      401:
+        description: Missing or invalid authentication token
+      404:
+        description: Zone not found
+
+  create-dns-record:
+    description: Create a new DNS record in a zone
+    method: POST
+    path: /zones/{zone_id}/dns_records
+    parameters:
+      - name: zone_id
+        type: string
+        in: path
+        required: true
+        description: Identifier of the zone to create the DNS record in
+    requestBody:
+      description: DNS record data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          type:
+            type: string
+            required: true
+            description: "DNS record type (A, AAAA, CNAME, TXT, MX, NS, SRV, CAA, PTR)"
+          name:
+            type: string
+            required: true
+            description: DNS record name (use @ for zone apex)
+          content:
+            type: string
+            required: true
+            description: DNS record content value (e.g., IP address or hostname)
+          ttl:
+            type: integer
+            required: false
+            default: 1
+            description: Time to live in seconds (1 = automatic)
+          proxied:
+            type: boolean
+            required: false
+            default: false
+            description: Whether to proxy traffic through Cloudflare
+          comment:
+            type: string
+            required: false
+            description: Optional comment for the DNS record
+    responses:
+      200:
+        description: DNS record created successfully
+        schema: DnsRecord
+      400:
+        description: Invalid DNS record data
+      401:
+        description: Missing or invalid authentication token
+      404:
+        description: Zone not found
+
+  update-dns-record:
+    description: Update an existing DNS record in a zone
+    method: PUT
+    path: /zones/{zone_id}/dns_records/{dns_record_id}
+    parameters:
+      - name: zone_id
+        type: string
+        in: path
+        required: true
+        description: Identifier of the zone containing the DNS record
+      - name: dns_record_id
+        type: string
+        in: path
+        required: true
+        description: Identifier of the DNS record to update
+    requestBody:
+      description: Updated DNS record data
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          type:
+            type: string
+            required: true
+            description: "DNS record type (A, AAAA, CNAME, TXT, MX, NS, SRV, CAA, PTR)"
+          name:
+            type: string
+            required: true
+            description: DNS record name (use @ for zone apex)
+          content:
+            type: string
+            required: true
+            description: DNS record content value (e.g., IP address or hostname)
+          ttl:
+            type: integer
+            required: false
+            default: 1
+            description: Time to live in seconds (1 = automatic)
+          proxied:
+            type: boolean
+            required: false
+            default: false
+            description: Whether to proxy traffic through Cloudflare
+          comment:
+            type: string
+            required: false
+            description: Optional comment for the DNS record
+    responses:
+      200:
+        description: DNS record updated successfully
+        schema: DnsRecord
+      400:
+        description: Invalid DNS record data
+      401:
+        description: Missing or invalid authentication token
+      404:
+        description: Zone or DNS record not found
+
+  purge-cache:
+    description: Purge cached content from Cloudflare's CDN for a zone
+    method: POST
+    path: /zones/{zone_id}/purge_cache
+    parameters:
+      - name: zone_id
+        type: string
+        in: path
+        required: true
+        description: Identifier of the zone to purge cache for
+    requestBody:
+      description: Cache purge options (purge everything or specific files/tags)
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          purge_everything:
+            type: boolean
+            required: false
+            description: When true, purges all cached content for the zone
+          files:
+            type: array
+            required: false
+            description: List of specific URLs to purge from the cache
+            items:
+              type: string
+          tags:
+            type: array
+            required: false
+            description: List of cache tags to purge
+            items:
+              type: string
+          hosts:
+            type: array
+            required: false
+            description: List of hostnames to purge cached content for
+            items:
+              type: string
+    responses:
+      200:
+        description: Cache purged successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              required: true
+              description: Identifier of the purge request
+      400:
+        description: Invalid purge request parameters
+      401:
+        description: Missing or invalid authentication token
+      404:
+        description: Zone not found
+

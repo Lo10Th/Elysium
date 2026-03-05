@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Twilio API Emblem** - SMS and phone verification (`twilio` emblem with `send-sms`, `list-messages`, `get-message`, `verify-start`, `verify-check` actions)
+- **Vercel Emblem** - Deployments and project management for Vercel frontend cloud ([#113](https://github.com/Lo10Th/Elysium/pull/113))
 
 ### Planned Features
 - `ely remove <name>` - Uninstall emblem

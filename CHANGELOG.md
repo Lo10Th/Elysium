@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Twilio API Emblem** - SMS and phone verification (`twilio` emblem with `send-sms`, `list-messages`, `get-message`, `verify-start`, `verify-check` actions)
+
 ### Planned Features
 - `ely remove <name>` - Uninstall emblem
 - `ely publish` - Publish emblem to registry

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Vercel Emblem** - Deployments and project management for Vercel frontend cloud ([#113](https://github.com/Lo10Th/Elysium/pull/113))
+
 ### Planned Features
 - `ely remove <name>` - Uninstall emblem
 - `ely publish` - Publish emblem to registry

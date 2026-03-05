@@ -10,7 +10,10 @@ baseUrl: https://s3.amazonaws.com
 
 auth:
   type: api_key
-  keyEnv: AWS_ACCESS_KEY_ID
+  keyEnv:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+  description: Requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables for AWS Signature Version 4 (SigV4) authentication
   header: Authorization
 
 tags:

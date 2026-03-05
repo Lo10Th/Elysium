@@ -122,8 +122,25 @@
           "description": "Authentication type"
         },
         "keyEnv": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Environment variable name containing the API key or token"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "List of environment variable names required for authentication"
+            }
+          ],
+          "description": "Environment variable name(s) containing the API key or token"
+        },
+        "description": {
           "type": "string",
-          "description": "Environment variable name containing the API key or token"
+          "description": "Description of the authentication mechanism and any requirements"
         },
         "header": {
           "type": "string",

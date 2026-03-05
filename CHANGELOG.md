@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **OpenAI Emblem** - Chat completions (GPT-4, GPT-3.5-turbo), model listing, embeddings, and DALL-E image generation ([#109](https://github.com/Lo10Th/Elysium/pull/109))
+- **Anthropic Emblem** - Claude message creation and model listing with full parameter support ([#109](https://github.com/Lo10Th/Elysium/pull/109))
+
 ### Planned Features
 - `ely remove <name>` - Uninstall emblem
 - `ely publish` - Publish emblem to registry

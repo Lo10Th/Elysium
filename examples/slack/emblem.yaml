@@ -90,7 +90,7 @@ types:
 
 actions:
   # ── Messaging ─────────────────────────────────────────────────────
-  post-message:
+  send-message:
     description: Send a message to a channel or user
     method: POST
     path: /chat.postMessage

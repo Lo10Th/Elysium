@@ -111,7 +111,7 @@ download_file() {
     local url="$1"
     local dest="$2"
     if command -v curl &> /dev/null; then
-        curl -sSL "$url" -o "$dest"
+        curl -sSLf "$url" -o "$dest"
     elif command -v wget &> /dev/null; then
         wget -qO "$dest" "$url"
     else
@@ -251,52 +251,71 @@ main() {
     echo -e "Version:  ${YELLOW}${VERSION}${NC}"
     echo ""
 
-    # Build download URL
-    # Release assets are named: ely-{os}-{arch}.tar.gz (e.g. ely-linux-amd64.tar.gz)
-    local asset_name="ely-${os}-${arch}"
+    # Build asset names for both release formats:
+    #   tar.gz format: ely-{os}-{arch}.tar.gz  (used by automated CI releases)
+    #   plain binary:  ely-{os}-{arch}          (used by manual releases)
+    local tar_name="ely-${os}-${arch}.tar.gz"
+    local bin_name="ely-${os}-${arch}"
     if [ "$os" = "windows" ]; then
-        asset_name="${asset_name}.exe.tar.gz"
-    else
-        asset_name="${asset_name}.tar.gz"
+        tar_name="ely-${os}-${arch}.exe.tar.gz"
+        bin_name="ely-${os}-${arch}.exe"
     fi
-    local download_url="${GITHUB_RELEASES}/download/${VERSION}/${asset_name}"
 
     # Create a temporary directory
     local tmp_dir
     tmp_dir=$(mktemp -d)
     trap 'rm -rf "$tmp_dir"' EXIT
 
-    # Download the binary
-    echo -e "${BLUE}Downloading ${asset_name}...${NC}"
-    local archive="${tmp_dir}/${asset_name}"
-    if ! download_file "$download_url" "$archive"; then
-        echo -e "${RED}❌ Failed to download from: ${download_url}${NC}"
-        echo "   Please check your network connection or visit:"
-        echo "   ${GITHUB_RELEASES}"
-        exit 1
-    fi
-
-    # Verify the download is non-empty
-    if [ ! -s "$archive" ]; then
-        echo -e "${RED}❌ Downloaded file is empty. The release asset may not exist yet.${NC}"
-        echo "   Visit ${GITHUB_RELEASES} to download manually."
-        exit 1
-    fi
-
-    # Extract binary
-    echo -e "${BLUE}Extracting binary...${NC}"
-    tar -xzf "$archive" -C "$tmp_dir"
-
     local binary_path="${tmp_dir}/${BINARY_NAME}"
     if [ "$os" = "windows" ]; then
         binary_path="${tmp_dir}/${BINARY_NAME}.exe"
     fi
 
-    if [ ! -f "$binary_path" ]; then
-        # Try finding the binary in subdirectories
-        binary_path=$(find "$tmp_dir" -name "${BINARY_NAME}" -o -name "${BINARY_NAME}.exe" 2>/dev/null | head -1)
-        if [ -z "$binary_path" ]; then
-            echo -e "${RED}❌ Binary not found in archive${NC}"
+    # Try downloading as tar.gz first (automated CI releases)
+    local archive="${tmp_dir}/${tar_name}"
+    local use_tar=false
+    echo -e "${BLUE}Downloading ${tar_name}...${NC}"
+    if download_file "${GITHUB_RELEASES}/download/${VERSION}/${tar_name}" "$archive" && [ -s "$archive" ]; then
+        use_tar=true
+    fi
+
+    if [ "$use_tar" = true ]; then
+        # Extract binary from archive
+        echo -e "${BLUE}Extracting binary...${NC}"
+        local tar_error
+        if ! tar_error=$(tar -xzf "$archive" -C "$tmp_dir" 2>&1); then
+            echo -e "${YELLOW}⚠️  Archive extraction failed (${tar_error}), trying plain binary download...${NC}"
+            use_tar=false
+        fi
+    fi
+
+    if [ "$use_tar" = true ]; then
+        if [ ! -f "$binary_path" ]; then
+            # Binary may be in a subdirectory inside the archive
+            binary_path=$(find "$tmp_dir" -name "${BINARY_NAME}" -o -name "${BINARY_NAME}.exe" 2>/dev/null | head -1)
+            if [ -z "$binary_path" ]; then
+                echo -e "${YELLOW}⚠️  Binary not found in archive, trying plain binary download...${NC}"
+                use_tar=false
+            fi
+        fi
+    fi
+
+    if [ "$use_tar" = false ]; then
+        # Fall back to plain binary (manual/older releases)
+        echo -e "${BLUE}Downloading ${bin_name}...${NC}"
+        binary_path="${tmp_dir}/${BINARY_NAME}"
+        if [ "$os" = "windows" ]; then
+            binary_path="${tmp_dir}/${BINARY_NAME}.exe"
+        fi
+        if ! download_file "${GITHUB_RELEASES}/download/${VERSION}/${bin_name}" "$binary_path"; then
+            echo -e "${RED}❌ Failed to download from: ${GITHUB_RELEASES}/download/${VERSION}/${bin_name}${NC}"
+            echo "   Please check your network connection or visit:"
+            echo "   ${GITHUB_RELEASES}"
+            exit 1
+        fi
+        if [ ! -s "$binary_path" ]; then
+            echo -e "${RED}❌ Downloaded file is empty. The release asset may not exist yet.${NC}"
+            echo "   Visit ${GITHUB_RELEASES} to download manually."
             exit 1
         fi
     fi

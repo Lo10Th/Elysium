@@ -30,6 +30,7 @@ Examples:
 		sort, _ := cmd.Flags().GetString("sort")
 		limit, _ := cmd.Flags().GetInt("limit")
 		offset, _ := cmd.Flags().GetInt("offset")
+		verbose, _ := cmd.Flags().GetBool("verbose")
 
 		cfg := config.Get()
 		client := api.NewClient()
@@ -57,6 +58,13 @@ Examples:
 				desc = desc[:42] + "..."
 			}
 			fmt.Printf("  %-30s %-15s %s\n", e.Name, e.LatestVersion, desc)
+			if e.AuthorName != "" && verbose {
+				verified := ""
+				if e.AuthorVerified {
+					verified = " ✓"
+				}
+				fmt.Printf("    by %s%s\n", e.AuthorName, verified)
+			}
 		}
 
 		fmt.Println()
@@ -73,6 +81,7 @@ func init() {
 	searchCmd.Flags().String("sort", "downloads", "Sort by: downloads, recent, name")
 	searchCmd.Flags().Int("limit", 20, "Limit number of results")
 	searchCmd.Flags().Int("offset", 0, "Offset for pagination")
+	searchCmd.Flags().Bool("verbose", false, "Show detailed information including author")
 
 	rootCmd.AddCommand(searchCmd)
 }

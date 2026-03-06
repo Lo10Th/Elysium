@@ -75,7 +75,11 @@ Otherwise, it will fetch from the remote registry.`,
 		fmt.Println()
 		fmt.Printf("  Description:  %s\n", def.Description)
 		fmt.Printf("  Base URL:     %s\n", def.BaseURL)
-		fmt.Printf("  Author:       %s\n", def.Author)
+		author := def.Author
+		if author == "" {
+			author = "Unknown"
+		}
+		fmt.Printf("  Author:       %s\n", author)
 		fmt.Printf("  License:      %s\n", def.License)
 		if verbose {
 			fmt.Printf("  Category:     %s\n", def.Category)

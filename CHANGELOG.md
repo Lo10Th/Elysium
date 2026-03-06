@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.4] - 2026-03-06
+
+### Fixed
+- **CLI Login** - Device code creation now works correctly with proper PostgreSQL permissions
+  - Fixed timestamp calculation for device code expiry (ISO 8601 format instead of raw SQL)
+  - Added proper GRANT permissions for `anon` role on `device_codes` and `emblem_pulls` tables
+  - Improved UPDATE policy on `device_codes` to only allow updates on unverified codes (security fix)
+- **Self-Update** - Binary extraction from tar.gz archives now works correctly
+
+### Security
+- **Device Code Flow** - UPDATE policy now restricts modifications to unverified codes only, preventing token theft
+
+---
+
 ## [1.0.0] - 2026-03-04
 
 ### Added

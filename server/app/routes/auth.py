@@ -15,7 +15,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import get_settings
-from app.database import get_supabase, get_supabase_service_client, run_sync
+from app.database import get_supabase, run_sync
 from app.limiter import (
     limiter,
     PUBLIC_LIMIT,
@@ -214,7 +214,7 @@ async def create_device_code(
     request: Request,
     req: DeviceAuthorizationRequest = DeviceAuthorizationRequest(),
 ):
-    supabase = get_supabase_service_client()
+    supabase = get_supabase()
     return await run_sync(
         AuthService.create_device_code, supabase, req.client_name, FRONTEND_URL
     )

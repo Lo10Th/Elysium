@@ -5,7 +5,6 @@ from app.config import get_settings
 
 # Initialize Supabase client lazily
 _supabase: Optional[Client] = None
-_supabase_service: Optional[Client] = None
 
 
 def get_supabase() -> Client:
@@ -17,21 +16,6 @@ def get_supabase() -> Client:
             settings.SUPABASE_URL, settings.effective_supabase_key
         )
     return _supabase
-
-
-def get_supabase_service_client() -> Client:
-    """Get Supabase client with service role key (bypasses RLS).
-
-    Use this for operations that need to bypass Row-Level Security,
-    such as device code creation which happens before authentication.
-    """
-    global _supabase_service
-    if _supabase_service is None:
-        settings = get_settings()
-        _supabase_service = create_client(
-            settings.SUPABASE_URL, settings.effective_supabase_service_key
-        )
-    return _supabase_service
 
 
 async def run_sync(func: Callable, *args: Any, **kwargs: Any) -> Any:

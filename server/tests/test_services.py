@@ -737,6 +737,23 @@ class TestAuthServiceDeviceCode:
         assert "user_code" in result
         assert result["expires_in"] == 600
 
+    def test_create_device_code_expires_at_is_iso_timestamp(self):
+        """expires_at must be a pre-computed ISO timestamp, not a raw SQL expression."""
+        from datetime import datetime, timezone
+        sb, q = make_supabase()
+        q.execute.return_value = mock_response(None)
+        AuthService.create_device_code(sb, "Elysium CLI", "https://fe.app")
+        inserted = q.insert.call_args[0][0]
+        expires_at = inserted["expires_at"]
+        # Must not be a raw SQL expression
+        assert "now()" not in expires_at
+        assert "interval" not in expires_at
+        # Must be parseable as an ISO 8601 datetime
+        parsed = datetime.fromisoformat(expires_at)
+        assert parsed.tzinfo is not None
+        # Must be in the future
+        assert parsed > datetime.now(timezone.utc)
+
     def test_get_device_status_not_found_raises_404(self):
         sb, q = make_supabase()
         q.execute.return_value = mock_response(None)

@@ -14,7 +14,7 @@ import logging
 import secrets
 import string
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException
@@ -507,7 +507,9 @@ class AuthService:
                 "device_code": device_code,
                 "user_code": user_code,
                 "client_name": client_name,
-                "expires_at": (f"now() + interval '{_DEVICE_CODE_EXPIRY} seconds'"),
+                "expires_at": (
+                    datetime.now(timezone.utc) + timedelta(seconds=_DEVICE_CODE_EXPIRY)
+                ).isoformat(),
             }
         ).execute()
 

@@ -193,9 +193,7 @@ class AuthService:
         except Exception as exc:
             error_msg = str(exc)
             if "already registered" in error_msg.lower():
-                raise HTTPException(
-                    status_code=400, detail="Email already registered"
-                )
+                raise HTTPException(status_code=400, detail="Email already registered")
             logger.error("Registration failed for email='%s': %s", email, exc)
             raise HTTPException(status_code=400, detail="Registration failed")
 
@@ -242,9 +240,7 @@ class AuthService:
         try:
             response = supabase.auth.refresh_session(refresh_token)
             if not response.session:
-                raise HTTPException(
-                    status_code=401, detail="Invalid refresh token"
-                )
+                raise HTTPException(status_code=401, detail="Invalid refresh token")
 
             username: Optional[str] = None
             if response.user:
@@ -285,9 +281,7 @@ class AuthService:
     def reset_password(supabase: Client, token: str, password: str) -> dict:
         """Verify a reset token and update the user's password."""
         try:
-            supabase.auth.verify_oauth_token(
-                {"type": "recovery", "token": token}
-            )
+            supabase.auth.verify_oauth_token({"type": "recovery", "token": token})
             response = supabase.auth.update_user({"password": password})
             if not response.user:
                 raise HTTPException(status_code=400, detail="Password reset failed")
@@ -323,6 +317,7 @@ class AuthService:
                 "username": profile.data.get("username"),
                 "bio": profile.data.get("bio"),
                 "avatar_url": profile.data.get("avatar_url"),
+                "is_verified": profile.data.get("is_verified", False),
                 "created_at": profile.data.get("created_at"),
                 "updated_at": profile.data.get("updated_at"),
             }
@@ -386,9 +381,7 @@ class AuthService:
                 raise HTTPException(status_code=404, detail="Profile not found")
 
             profile_data = (
-                profile.data[0]
-                if isinstance(profile.data, list)
-                else profile.data
+                profile.data[0] if isinstance(profile.data, list) else profile.data
             )
 
             return {
@@ -397,6 +390,7 @@ class AuthService:
                 "username": profile_data.get("username"),
                 "bio": profile_data.get("bio"),
                 "avatar_url": profile_data.get("avatar_url"),
+                "is_verified": profile_data.get("is_verified", False),
                 "created_at": profile_data.get("created_at"),
                 "updated_at": profile_data.get("updated_at"),
             }
@@ -427,9 +421,7 @@ class AuthService:
                 {
                     "provider": provider,
                     "options": {
-                        "redirect_to": (
-                            f"{frontend_url}/auth/callback?state={state}"
-                        ),
+                        "redirect_to": (f"{frontend_url}/auth/callback?state={state}"),
                         "scopes": (
                             "user:email" if provider == "github" else "email profile"
                         ),
@@ -515,9 +507,7 @@ class AuthService:
                 "device_code": device_code,
                 "user_code": user_code,
                 "client_name": client_name,
-                "expires_at": (
-                    f"now() + interval '{_DEVICE_CODE_EXPIRY} seconds'"
-                ),
+                "expires_at": (f"now() + interval '{_DEVICE_CODE_EXPIRY} seconds'"),
             }
         ).execute()
 
@@ -570,9 +560,7 @@ class AuthService:
         row = result.data
 
         if row.get("verified_at"):
-            raise HTTPException(
-                status_code=400, detail="Device code already verified"
-            )
+            raise HTTPException(status_code=400, detail="Device code already verified")
 
         expires_at = _parse_expires(row.get("expires_at"))
         if expires_at and expires_at < datetime.now(timezone.utc):
@@ -630,11 +618,7 @@ class AuthService:
         user_id: str = row["user_id"]
 
         user_result = (
-            supabase.table("profiles")
-            .select("*")
-            .eq("id", user_id)
-            .single()
-            .execute()
+            supabase.table("profiles").select("*").eq("id", user_id).single().execute()
         )
         profile = user_result.data if user_result.data else {}
 
@@ -643,13 +627,9 @@ class AuthService:
         )
 
         if not magic_link or not hasattr(magic_link, "properties"):
-            raise HTTPException(
-                status_code=500, detail="Failed to generate session"
-            )
+            raise HTTPException(status_code=500, detail="Failed to generate session")
 
-        supabase.table("device_codes").delete().eq(
-            "device_code", device_code
-        ).execute()
+        supabase.table("device_codes").delete().eq("device_code", device_code).execute()
 
         return {
             "access_token": magic_link.properties.get("access_token", ""),

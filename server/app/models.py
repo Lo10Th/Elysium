@@ -49,7 +49,7 @@ class Parameter(BaseModel):
 class Response(BaseModel):
     description: str
     schema_: Optional[dict] = Field(None, alias="schema")
-    
+
     class Config:
         populate_by_name = True
 
@@ -71,8 +71,10 @@ class TypeDefinition(BaseModel):
 
 class EmblemYAML(BaseModel):
     apiVersion: str
-    name: constr(pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
-    version: constr(pattern=r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$')
+    name: constr(pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$", min_length=1, max_length=64)
+    version: constr(
+        pattern=r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+    )
     description: constr(min_length=10, max_length=500)
     author: Optional[str] = None
     license: str = "MIT"
@@ -87,7 +89,7 @@ class EmblemYAML(BaseModel):
 
 
 class EmblemCreate(BaseModel):
-    name: constr(pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$', min_length=1, max_length=64)
+    name: constr(pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$", min_length=1, max_length=64)
     description: constr(min_length=10, max_length=500)
     yaml_content: str
     category: Optional[str] = None
@@ -110,6 +112,7 @@ class Emblem(BaseModel):
     description: str
     author_id: Optional[str] = None
     author_name: Optional[str] = None
+    author_verified: Optional[bool] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
     license: str = "MIT"
@@ -270,6 +273,7 @@ class ProfileResponse(BaseModel):
     username: str | None
     bio: str | None
     avatar_url: str | None
+    is_verified: bool = False
     created_at: str
     updated_at: str
 

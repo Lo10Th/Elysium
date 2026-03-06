@@ -40,17 +40,24 @@ def _row_to_emblem(row: dict) -> Emblem:
     different route handlers.
     """
     profiles = row.get("profiles")
+    author_name: Optional[str] = None
+    author_verified: Optional[bool] = None
+
     if isinstance(profiles, dict):
-        author_name: Optional[str] = profiles.get("username")
+        author_name = profiles.get("username")
+        author_verified = profiles.get("is_verified")
     else:
-        # RPC responses return author_name directly as a flat field
+        # RPC responses return author_name and author_verified directly as flat fields
         author_name = row.get("author_name")
+        author_verified = row.get("author_verified")
+
     return Emblem(
         id=row["id"],
         name=row["name"],
         description=row["description"],
         author_id=row.get("author_id"),
         author_name=author_name,
+        author_verified=author_verified,
         category=row.get("category"),
         tags=row.get("tags"),
         license=row.get("license", "MIT"),
@@ -93,7 +100,9 @@ class EmblemService:
     ) -> List[Emblem]:
         """Return a paginated, optionally-filtered list of emblems."""
         try:
-            query = supabase.table("emblems").select("*, profiles(username)")
+            query = supabase.table("emblems").select(
+                "*, profiles(username, is_verified)"
+            )
             if category:
                 query = query.eq("category", category)
             response = (
@@ -135,17 +144,15 @@ class EmblemService:
         except Exception:
             # Fallback: ILIKE search when the RPC function is not available.
             try:
-                query = supabase.table("emblems").select("*, profiles(username)")
+                query = supabase.table("emblems").select(
+                    "*, profiles(username, is_verified)"
+                )
                 # Escape LIKE metacharacters to prevent pattern injection.
                 # PostgREST's `.ilike.` filter passes these escaped characters
                 # directly to PostgreSQL's ILIKE operator, which respects the
                 # standard SQL escape sequence (ESCAPE '\').
-                safe_q = (
-                    q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                )
-                query = query.or_(
-                    f"name.ilike.%{safe_q}%,description.ilike.%{safe_q}%"
-                )
+                safe_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                query = query.or_(f"name.ilike.%{safe_q}%,description.ilike.%{safe_q}%")
                 if category:
                     query = query.eq("category", category)
                 if sort == "downloads":
@@ -166,7 +173,7 @@ class EmblemService:
         try:
             response = (
                 supabase.table("emblems")
-                .select("*, profiles(username)")
+                .select("*, profiles(username, is_verified)")
                 .eq("name", name)
                 .single()
                 .execute()
@@ -218,9 +225,7 @@ class EmblemService:
         except HTTPException:
             raise
         except Exception as exc:
-            logger.error(
-                "Failed to get emblem version '%s@%s': %s", name, version, exc
-            )
+            logger.error("Failed to get emblem version '%s@%s': %s", name, version, exc)
             raise HTTPException(status_code=500, detail="Internal server error")
 
     @staticmethod
@@ -282,7 +287,10 @@ class EmblemService:
             ).execute()
 
             row = dict(emblem_resp.data[0])
-            row["author_name"] = user.username  # inject author_name since there's no profiles join
+            row["author_name"] = (
+                user.username
+            )  # inject author_name since there's no profiles join
+            row["author_verified"] = None  # will be populated when emblem is fetched
             return _row_to_emblem(row)
         except HTTPException:
             raise
@@ -345,6 +353,7 @@ class EmblemService:
 
             row = dict(emblem_resp.data)
             row["author_name"] = user.username  # inject since no profiles join
+            row["author_verified"] = None  # will be populated when emblem is fetched
             row["description"] = request_body.description or row["description"]
             row["latest_version"] = request_body.version
             return _row_to_emblem(row)

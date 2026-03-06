@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -103,9 +104,18 @@ func requestDeviceCode(registry string) (*deviceCodeResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("server returned error %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
 	var deviceResp deviceCodeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&deviceResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if err := json.Unmarshal(bodyBytes, &deviceResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w (body: %s)", err, string(bodyBytes))
 	}
 
 	if deviceResp.Error != "" {
@@ -136,9 +146,14 @@ func pollForToken(registry, deviceCode string) (*deviceTokenResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	tokenBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
 	var tokenResp deviceTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if err := json.Unmarshal(tokenBodyBytes, &tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w (body: %s)", err, string(tokenBodyBytes))
 	}
 
 	// Check for pending status

@@ -6,7 +6,7 @@ import os
 class Settings(BaseSettings):
     # App settings
     APP_NAME: str = "Elysium Registry"
-    APP_VERSION: str = "0.2.4"
+    APP_VERSION: str = "0.2.5"
     DEBUG: bool = False
 
     # Server settings
